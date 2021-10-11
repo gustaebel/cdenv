@@ -1,0 +1,7 @@
+[package]
+name = "cdenv"
+version = "0.2.25"
+
+[dependencies]
+clap = "~2.33.3"
+regex = "1"
