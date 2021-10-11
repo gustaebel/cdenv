@@ -28,18 +28,6 @@ enum LineState {
     InFunctionDef
 }
 
-enum Change {
-    NewVar,
-    RemovedVar,
-    ChangedVar,
-    NewFunc,
-    RemovedFunc,
-    ChangedFunc,
-    NewAlias,
-    RemovedAlias,
-    ChangedAlias
-}
-
 fn main() {
     let matches = App::new("cdenv")
                     .subcommand(SubCommand::with_name("list")
@@ -111,7 +99,6 @@ fn list_delta_paths(global: bool, oldpwd: &str, pwd: &str, file: &str) {
             load.remove(index);
         }
     }
-
     print_paths(&unload, &load);
 }
 
@@ -129,56 +116,31 @@ fn print_paths(unload: &Vec<String>, load: &Vec<String>) {
     println!(")");
 }
 
-fn record(file: &mut File, change: Change, name: &String, body: &String) {
-    match change {
-        Change::NewVar => {
-            println!("__cdenv_debug '+ {}'", name);
-            write(file, format!("__cdenv_debug undo '+ {}'\n", name));
-            write(file, format!("unset {}\n", name));
-        },
-        Change::RemovedVar => {
-            println!("__cdenv_debug '- {}'", name);
-            write(file, format!("__cdenv_debug undo '- {}'\n", name));
-            write(file, body.to_string());
-        },
-        Change::ChangedVar => {
-            println!("__cdenv_debug '~ {}'", name);
-            write(file, format!("__cdenv_debug undo '~ {}'\n", name));
-            write(file, format!("unset {}\n", name));
-            write(file, body.to_string());
-        },
-        Change::NewFunc => {
-            println!("__cdenv_debug '+ {}()'", name);
-            write(file, format!("__cdenv_debug undo '+ {}()'\n", name));
-            write(file, format!("unset -f {}\n", name));
-        },
-        Change::RemovedFunc => {
-            println!("__cdenv_debug '- {}()'", name);
-            write(file, format!("__cdenv_debug undo '- {}()'\n", name));
-            write(file, body.to_string());
-        },
-        Change::ChangedFunc => {
-            println!("__cdenv_debug '~ {}()'", name);
-            write(file, format!("__cdenv_debug undo '~ {}()'\n", name));
-            write(file, format!("unset -f {}\n", name));
-            write(file, body.to_string());
-        },
-        Change::NewAlias => {
-            println!("__cdenv_debug '+ {}*'", name);
-            write(file, format!("__cdenv_debug undo '+ {}*'\n", name));
-            write(file, format!("unalias {}\n", name));
-        },
-        Change::RemovedAlias => {
-            println!("__cdenv_debug '- {}*'", name);
-            write(file, format!("__cdenv_debug undo '- {}*'\n", name));
-            write(file, body.to_string());
-        },
-        Change::ChangedAlias => {
-            println!("__cdenv_debug '~ {}*'", name);
-            write(file, format!("__cdenv_debug undo '~ {}*'\n", name));
-            write(file, format!("unalias {}\n", name));
-            write(file, body.to_string());
-        },
+fn check(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>,
+              file: &mut File, suffix: &str, unset: &str) {
+    for key in set_b.keys() {
+        if !set_a.contains_key(key) {
+            println!("__cdenv_debug '+ {}{}'", key, suffix);
+            write(file, format!("__cdenv_debug undo '+ {}{}'\n", key, suffix));
+            write(file, format!("{} {}\n", unset, key));
+        }
+    }
+
+    for key in set_a.keys() {
+        if !set_b.contains_key(key) {
+            println!("__cdenv_debug '- {}{}'", key, suffix);
+            write(file, format!("__cdenv_debug undo '- {}{}'\n", key, suffix));
+            write(file, set_a.get(key).unwrap().to_string());
+        }
+    }
+
+    for key in set_b.keys() {
+        if set_a.contains_key(key) && set_a.get(key) != set_b.get(key) {
+            println!("__cdenv_debug '~ {}{}'", key, suffix);
+            write(file, format!("__cdenv_debug undo '~ {}{}'\n", key, suffix));
+            write(file, format!("{} {}\n", unset, key));
+            write(file, set_a.get(key).unwrap().to_string());
+        }
     }
 }
 
@@ -195,55 +157,10 @@ fn compare_environments(path: &str, restore: &str) {
     parse_environment(None, &mut vars_b, &mut funcs_b, &mut alias_b);
 
     let mut file = File::create(restore).unwrap();
-    let empty = "".to_string();
 
-    for key in vars_b.keys() {
-        if !vars_a.contains_key(key) {
-            record(&mut file, Change::NewVar, key, &empty);
-        }
-    }
-    for key in vars_a.keys() {
-        if !vars_b.contains_key(key) {
-            record(&mut file, Change::RemovedVar, key, &vars_a.get(key).unwrap());
-        }
-    }
-    for key in vars_b.keys() {
-        if vars_a.contains_key(key) && vars_a.get(key) != vars_b.get(key) {
-            record(&mut file, Change::ChangedVar, key, &vars_a.get(key).unwrap());
-        }
-    }
-
-    for key in funcs_b.keys() {
-        if !funcs_a.contains_key(key) {
-            record(&mut file, Change::NewFunc, key, &empty);
-        }
-    }
-    for key in funcs_a.keys() {
-        if !funcs_b.contains_key(key) {
-            record(&mut file, Change::RemovedFunc, key, &funcs_a.get(key).unwrap());
-        }
-    }
-    for key in funcs_b.keys() {
-        if funcs_a.contains_key(key) && funcs_a.get(key) != funcs_b.get(key) {
-            record(&mut file, Change::ChangedFunc, key, &funcs_a.get(key).unwrap());
-        }
-    }
-
-    for key in alias_b.keys() {
-        if !alias_a.contains_key(key) {
-            record(&mut file, Change::NewAlias, key, &empty);
-        }
-    }
-    for key in alias_a.keys() {
-        if !alias_b.contains_key(key) {
-            record(&mut file, Change::RemovedAlias, key, &alias_a.get(key).unwrap());
-        }
-    }
-    for key in alias_b.keys() {
-        if alias_a.contains_key(key) && alias_a.get(key) != alias_b.get(key) {
-            record(&mut file, Change::ChangedAlias, key, &alias_a.get(key).unwrap());
-        }
-    }
+    check(&vars_a, &vars_b, &mut file, "", "unset");
+    check(&funcs_a, &funcs_b, &mut file, "()", "unset -f");
+    check(&alias_a, &alias_b, &mut file, "*", "unalias");
 }
 
 fn file_exists(path: &str, file: &str) -> bool {
