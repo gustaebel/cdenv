@@ -129,7 +129,7 @@ __cdenv_source() {
     local tmp="$CDENV_CACHE/$$.tmp"
 
     # Save a snapshot of the environment.
-    { declare -p; declare -f; } > "$tmp"
+    { declare -p; declare -f; alias; } > "$tmp"
 
     # Source the cdenv file.
     __cdenv_msg "source $(__cdenv_translate "$directory")"
@@ -138,7 +138,7 @@ __cdenv_source() {
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    { declare -p; declare -f; } | eval "$($CDENV_EXEC compare "$tmp" "$(__cdenv_restore_path "$directory")")"
+    { declare -p; declare -f; alias; } | eval "$($CDENV_EXEC compare "$tmp" "$(__cdenv_restore_path "$directory")")"
     rm "$tmp"
 }
 
@@ -181,11 +181,11 @@ usage: cdenv <command> [<argument> ...]
 
 cdenv will check for a file called $CDENV_FILE every time you cd into a
 directory. This file will be sourced in the current environment. This way you
-can easily add variables and functions to the environment or simply echo a text
-message each time you enter this directory. The changes to the environment are
-cumulative, i.e. the deeper you go in the directory tree each new $CDENV_FILE's
-changes are put on top of the others. Once you go back up in the tree the
-changes are undone one by one.
+can easily add variables, functions and aliases to the environment or simply
+echo a text message each time you enter this directory. The changes to the
+environment are cumulative, i.e. the deeper you go in the directory tree each
+new $CDENV_FILE's changes are put on top of the others. Once you go back up in
+the tree the changes are undone one by one.
 
 Settings are stored in ~/$CDENV_RCFILE:
 

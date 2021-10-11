@@ -34,7 +34,10 @@ enum Change {
     ChangedVar,
     NewFunc,
     RemovedFunc,
-    ChangedFunc
+    ChangedFunc,
+    NewAlias,
+    RemovedAlias,
+    ChangedAlias
 }
 
 fn main() {
@@ -160,6 +163,22 @@ fn record(file: &mut File, change: Change, name: &String, body: &String) {
             write(file, format!("unset -f {}\n", name));
             write(file, body.to_string());
         },
+        Change::NewAlias => {
+            println!("__cdenv_debug '+ {}*'", name);
+            write(file, format!("__cdenv_debug undo '+ {}*'\n", name));
+            write(file, format!("unalias {}\n", name));
+        },
+        Change::RemovedAlias => {
+            println!("__cdenv_debug '- {}*'", name);
+            write(file, format!("__cdenv_debug undo '- {}*'\n", name));
+            write(file, body.to_string());
+        },
+        Change::ChangedAlias => {
+            println!("__cdenv_debug '~ {}*'", name);
+            write(file, format!("__cdenv_debug undo '~ {}*'\n", name));
+            write(file, format!("unalias {}\n", name));
+            write(file, body.to_string());
+        },
     }
 }
 
@@ -167,11 +186,13 @@ fn record(file: &mut File, change: Change, name: &String, body: &String) {
 fn compare_environments(path: &str, restore: &str) {
     let mut vars_a: HashMap<String, String> = HashMap::new();
     let mut funcs_a: HashMap<String, String> = HashMap::new();
+    let mut alias_a: HashMap<String, String> = HashMap::new();
     let mut vars_b: HashMap<String, String> = HashMap::new();
     let mut funcs_b: HashMap<String, String> = HashMap::new();
+    let mut alias_b: HashMap<String, String> = HashMap::new();
 
-    parse_environment(Some(path), &mut vars_a, &mut funcs_a);
-    parse_environment(None, &mut vars_b, &mut funcs_b);
+    parse_environment(Some(path), &mut vars_a, &mut funcs_a, &mut alias_a);
+    parse_environment(None, &mut vars_b, &mut funcs_b, &mut alias_b);
 
     let mut file = File::create(restore).unwrap();
     let empty = "".to_string();
@@ -205,6 +226,22 @@ fn compare_environments(path: &str, restore: &str) {
     for key in funcs_b.keys() {
         if funcs_a.contains_key(key) && funcs_a.get(key) != funcs_b.get(key) {
             record(&mut file, Change::ChangedFunc, key, &funcs_a.get(key).unwrap());
+        }
+    }
+
+    for key in alias_b.keys() {
+        if !alias_a.contains_key(key) {
+            record(&mut file, Change::NewAlias, key, &empty);
+        }
+    }
+    for key in alias_a.keys() {
+        if !alias_b.contains_key(key) {
+            record(&mut file, Change::RemovedAlias, key, &alias_a.get(key).unwrap());
+        }
+    }
+    for key in alias_b.keys() {
+        if alias_a.contains_key(key) && alias_a.get(key) != alias_b.get(key) {
+            record(&mut file, Change::ChangedAlias, key, &alias_a.get(key).unwrap());
         }
     }
 }
@@ -259,13 +296,15 @@ fn write(file: &mut File, message: String) {
 // Here we create shell code that is later used to be sourced to restore the environment
 // prior to the changes. Because we source this code inside the __cdenv_load function we
 // have to add -g explicitly to declare all variables global.
-fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>, set_func: &mut HashMap<String, String>) {
+fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
+                     set_func: &mut HashMap<String, String>, set_alias: &mut HashMap<String, String>) {
     // FIXME check characters for var/func names, a-zA-Z0-9_ might not be enough.
     let re_declare = Regex::new("^declare\\s+-+([iaAfxr]*)\\s+([a-zA-Z_][a-zA-Z0-9_]*)$").unwrap();
     let re_var_start = Regex::new("^declare\\s+-+([ixr]*)\\s+([a-zA-Z_][a-zA-Z0-9_]*)=\"(.*)$").unwrap();
     let re_array_start = Regex::new("^declare\\s+-([aAxr]+)\\s+([a-zA-Z_][a-zA-Z0-9_]*)=\\((.*)$").unwrap();
     let re_function_start = Regex::new("^([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(\\)\\s*$").unwrap();
     let re_function_end = Regex::new("^}\\s*$").unwrap();
+    let re_alias = Regex::new("^alias\\s+([a-zA-Z_][a-zA-Z0-9_\\-]*)='(.*)'$").unwrap();
 
     let mut line_state = LineState::Default;
     let mut name = String::new();
@@ -329,6 +368,11 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
                 body.push_str(&line);
                 body.push_str("\n");
                 line_state = LineState::InFunctionDef;
+
+            } else if let Some(groups) = re_alias.captures(&line) {
+                name = get_group(&groups, 1);
+                body = get_group(&groups, 2);
+                set_alias.insert(name.clone(), format!("alias {}='{}'\n", name, body));
 
             } else if re_function_end.is_match(&line) {
                 // Parse the terminating line of a function definition.
