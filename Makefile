@@ -1,5 +1,9 @@
 all: cdenv
 
+clean:
+	rm -f cdenv
+	rm -rf target
+
 cdenv: src/main.rs
 	cargo build --release
 	cp target/release/cdenv .
