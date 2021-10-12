@@ -1,10 +1,12 @@
+.PHONY: cdenv
+
 all: cdenv
 
 clean:
 	rm -f cdenv
 	rm -rf target
 
-cdenv: src/main.rs
+cdenv:
 	cargo build --release
 	cp target/release/cdenv .
 
