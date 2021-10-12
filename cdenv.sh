@@ -18,8 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 CDENV_VERBOSE=0
-CDENV_GLOBAL=0
-CDENV_EXEC=/usr/lib/cdenv/cdenv
+CDENV_GLOBAL=1
 CDENV_FILE=.cdenv.sh
 CDENV_RCFILE=.cdenvrc.sh
 CDENV_INSTALL="${BASH_SOURCE[0]}"
