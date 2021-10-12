@@ -16,3 +16,6 @@ install: cdenv
 	install -m755 cdenv $(DESTDIR)/usr/lib/cdenv
 	install cdenv.sh $(DESTDIR)/usr/lib/cdenv
 
+install-user: cdenv
+	echo "source $(shell pwd)/cdenv.sh" >> $(HOME)/.bashrc
+
