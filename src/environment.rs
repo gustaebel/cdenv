@@ -17,12 +17,17 @@
 
 use std::io::{self, BufRead, BufReader};
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::iter::Iterator;
 use std::fs::File;
 use std::io::prelude::*;
 
 use regex::{Regex,Captures};
+
+const ENTER_FUNC: &'static str = "cdenv_enter";
+const LEAVE_FUNC: &'static str = "cdenv_leave";
+
+const EXCLUDE_VARS: &'static [&'static str] = &["_", "OLDPWD"];
+const EXCLUDE_FUNCS: &'static [&'static str] = &[ENTER_FUNC, LEAVE_FUNC];
 
 #[derive(PartialEq)]
 enum LineState {
@@ -33,22 +38,57 @@ enum LineState {
 }
 
 // Parse and compare two sets of shell environments.
-pub fn compare_environments(path: &str, restore: &str) {
+pub fn compare_environments(input: &str, restore: &str) {
     let mut vars_a: HashMap<String, String> = HashMap::new();
     let mut funcs_a: HashMap<String, String> = HashMap::new();
     let mut alias_a: HashMap<String, String> = HashMap::new();
+
     let mut vars_b: HashMap<String, String> = HashMap::new();
     let mut funcs_b: HashMap<String, String> = HashMap::new();
     let mut alias_b: HashMap<String, String> = HashMap::new();
 
-    parse_environment(Some(path), &mut vars_a, &mut funcs_a, &mut alias_a);
+    parse_environment(Some(input), &mut vars_a, &mut funcs_a, &mut alias_a);
     parse_environment(None, &mut vars_b, &mut funcs_b, &mut alias_b);
 
     let mut file = File::create(restore).unwrap();
 
+    if funcs_b.contains_key(ENTER_FUNC) {
+        // Feed cdenv_enter() back to the calling shell, so that it is called
+        // and immediately removed from the environment.
+        println!("{}\n", ENTER_FUNC);
+        println!("unset -f {}\n", ENTER_FUNC);
+    }
+
+    if funcs_b.contains_key(LEAVE_FUNC) {
+        // Register cdenv_leave() in the restore file, so that it is called
+        // and removed from the environment when the directory is left.
+        write(&mut file, funcs_b.get(LEAVE_FUNC).unwrap().to_string());
+        write(&mut file, format!("{}\n", LEAVE_FUNC));
+        write(&mut file, format!("unset -f {}\n", LEAVE_FUNC));
+    }
+
+    // Remove some names from the environment.
+    prune_unwanted_names(EXCLUDE_VARS, &mut vars_a);
+    prune_unwanted_names(EXCLUDE_VARS, &mut vars_b);
+    prune_unwanted_names(EXCLUDE_FUNCS, &mut funcs_a);
+    prune_unwanted_names(EXCLUDE_FUNCS, &mut funcs_b);
+
+    // Compare the vars, funcs and alias sets and write statements to stdout
+    // and the restore file.
     compare_sets(&vars_a, &vars_b, &mut file, "", "unset");
     compare_sets(&funcs_a, &funcs_b, &mut file, "()", "unset -f");
     compare_sets(&alias_a, &alias_b, &mut file, "*", "unalias");
+
+}
+
+// Remove a set of names from the environment that change uncontrollably between invocations or
+// that are not wanted in the result.
+fn prune_unwanted_names(exclude: &'static [&'static str], set: &mut HashMap<String, String>) {
+    for key in exclude {
+        if set.contains_key(&key.to_string()) {
+            set.remove(&key.to_string());
+        }
+    }
 }
 
 // Parse output of { declare -p; declare -f; alias; }.
@@ -69,10 +109,6 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
     let mut line_state = LineState::Default;
     let mut name = String::new();
     let mut body = String::new();
-
-    let mut exclude = HashSet::new();
-    exclude.insert("_".to_string());
-    exclude.insert("OLDPWD".to_string());
 
     let reader: Box<dyn BufRead> = match input {
         None => Box::new(BufReader::new(io::stdin())),
@@ -98,15 +134,13 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
                 let opts = get_group(&groups, 1);
                 name = get_group(&groups, 2);
                 let value = get_group(&groups, 3);
-                if !exclude.contains(&name) {
-                    line = format!("declare -g{} {}=\"{}\n", opts, name, value);
-                    if value.ends_with("\"") && !value.ends_with("\\\"") {
-                        set_var.insert(name.clone(), line);
-                        line_state = LineState::Default;
-                    } else {
-                        body.push_str(&line);
-                        line_state = LineState::InVariableDef;
-                    }
+                line = format!("declare -g{} {}=\"{}\n", opts, name, value);
+                if value.ends_with("\"") && !value.ends_with("\\\"") {
+                    set_var.insert(name.clone(), line);
+                    line_state = LineState::Default;
+                } else {
+                    body.push_str(&line);
+                    line_state = LineState::InVariableDef;
                 }
 
             } else if let Some(groups) = re_array_start.captures(&line) {

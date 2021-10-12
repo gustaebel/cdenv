@@ -81,6 +81,17 @@ their old values, when you leave the directory.
     reload it after that.
 
 
+## Special functions
+
+* `cdenv_enter()` and `cdenv_leave()`
+
+    These two function names in your `.cdenv.sh` are handled specially by
+    *cdenv*. They are both triggered when you enter or leave the directory
+    respectively, whereas leaving means going back up in the directory
+    hierarchy. For example, `cdenv_leave()` allows you to do clean up
+    operations before all the changes are undone.
+
+
 ## Settings
 
 Some of *cdenv*'s settings can be customized with a file called `~/.cdenvrc.sh`.

@@ -68,9 +68,9 @@ fn main() {
         }
 
     } else if let Some(matches) = matches.subcommand_matches("compare") {
-        let path = matches.value_of("path").unwrap();
+        let input = matches.value_of("path").unwrap();
         let restore = matches.value_of("restore").unwrap();
-        environment::compare_environments(&path, &restore);
+        environment::compare_environments(&input, &restore);
 
     } else if matches.is_present("version") {
         println!("{}", VERSION);

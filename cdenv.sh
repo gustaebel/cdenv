@@ -48,13 +48,13 @@ __cdenv_debug() {
 }
 
 __cdenv_safe_source() {
-    # Make sure to source every file with its parent directory as the current
-    # working directory. We must save OLDPWD too because it is implicitly set
-    # by cd.
+    # Source a file in the context of a specific directory.
+    local directory="$1"
+    local path="$2"
     local oldpwd="$OLDPWD"
     local savedir="$PWD"
-    builtin cd "$(dirname "$1")"
-    source "$(basename "$1")"
+    builtin cd "$directory"
+    source "$path"
     builtin cd "$savedir"
     OLDPWD="$oldpwd"
 }
@@ -130,7 +130,7 @@ __cdenv_unsource() {
     local path="$(__cdenv_restore_path "$directory")"
     __cdenv_msg "unsource $(__cdenv_translate "$directory")"
     if [[ -e $path ]]; then
-        __cdenv_safe_source "$path"
+        __cdenv_safe_source "$directory" "$path"
         rm "$path"
     fi
 }
@@ -147,7 +147,7 @@ __cdenv_source() {
 
     # Source the cdenv file.
     __cdenv_msg "source $(__cdenv_translate "$directory")"
-    __cdenv_safe_source "$path"
+    __cdenv_safe_source "$directory" "$path"
 
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
