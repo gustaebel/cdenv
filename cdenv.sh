@@ -222,10 +222,10 @@ CDENV_FILE={basename}
 
 commands:
     help        this help message
-    reload      reload the complete cdenv environment and all $CDENV_FILE
-                in the current directory traversal
-    edit        edit the $CDENV_FILE in the current working directory
-                and reload it
+    reload      unload and reload the complete cdenv environment and all
+                $CDENV_FILE in the current directory hierarchy
+    edit        load the $CDENV_FILE from the current working directory in the
+                EDITOR (${EDITOR:-vi}) and reload it after that
 EOF
             ;;
 

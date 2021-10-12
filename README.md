@@ -30,6 +30,12 @@ down the tree. All changes applied by `.cdenv.sh` files are automatically
 undone when you leave their respective directory, there is no need to write
 separate code that does that.
 
+If you `cd` deep into a directory structure, *cdenv* will check if there are
+`.cdenv.sh` files between the old and the new current working directory that
+have not yet been sourced. Every `.cdenv.sh` file is loaded by changing into
+that respective directory, sourcing the script file and changing back to the
+original directory.
+
 A `.cdenv.sh` file is a plain shell script, that is only sourced once when you
 enter the directory it is in. All the definitions of environment variables,
 functions, aliases and the rest of the code it contains are executed in the
@@ -55,6 +61,24 @@ their old values, when you leave the directory.
 * Supports oneshot shell code that is executed once when the directory is entered.
 * Uses plain shell code, no imposed quirky constraints.
 * Support for bash >= 4.0 only.
+
+
+## Commands
+
+
+* `help`
+
+    Show a helpful message about *cdenv*.
+
+* `reload`
+
+    Unload and reload the complete cdenv environment and all .cdenv.sh in the
+    current directory hierarchy.
+
+* `edit`
+
+    Load the .cdenv.sh from the current working directory in the `EDITOR` and
+    reload it after that.
 
 
 ## Settings
