@@ -205,19 +205,20 @@ the tree the changes are undone one by one.
 Settings are stored in ~/$CDENV_RCFILE:
 
 CDENV_VERBOSE={0|1|2}
-    Show verbose output. Current setting: CDENV_VERBOSE=$CDENV_VERBOSE
+    (current: $CDENV_VERBOSE)
+    Produce verbose output useful for debugging, default is 0.
 
 CDENV_GLOBAL={0|1}
-    Treat changes made to the environment in ~/$CDENV_FILE as global for
-    the current user so that they are still valid outside of your home
-    directory. Current setting: CDENV_GLOBAL=$CDENV_GLOBAL
+    (current: $CDENV_GLOBAL)
+    If set to 1, the changes in ~/$CDENV_FILE apply globally, regardless of
+    whether the current working directory is located inside the home directory,
+    default is 1.
 
 CDENV_FILE={basename}
-    Use a name other than .cdenv.sh. In terms of security it is advisable
-    to use a custom CDENV_FILE setting so that you do not accidentally
-    execute cdenv files from other people's git repositories or tar
-    archives.
-    Current setting: CDENV_FILE=$CDENV_FILE
+    (current: $CDENV_FILE)
+    Use a script filename different from the default .cdenv.sh to prevent
+    accidentally executing other people's shell code from a tar file or source
+    repo.
 
 commands:
     help        this help message
