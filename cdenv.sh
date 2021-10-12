@@ -175,6 +175,7 @@ cdenv() {
         version)
             $CDENV_EXEC version
             ;;
+
         help|"")
             cat >&2 <<EOF
 usage: cdenv <command> [<argument> ...]
