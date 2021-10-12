@@ -46,9 +46,9 @@ pub fn compare_environments(path: &str, restore: &str) {
 
     let mut file = File::create(restore).unwrap();
 
-    compare(&vars_a, &vars_b, &mut file, "", "unset");
-    compare(&funcs_a, &funcs_b, &mut file, "()", "unset -f");
-    compare(&alias_a, &alias_b, &mut file, "*", "unalias");
+    compare_sets(&vars_a, &vars_b, &mut file, "", "unset");
+    compare_sets(&funcs_a, &funcs_b, &mut file, "()", "unset -f");
+    compare_sets(&alias_a, &alias_b, &mut file, "*", "unalias");
 }
 
 // Parse output of { declare -p; declare -f; alias; }.
@@ -191,7 +191,7 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
 
 // Compare the two sets set_a and set_b and write debug statements to stdout
 // and restore statements to the restore file.
-fn compare(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>,
+fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>,
               file: &mut File, suffix: &str, unset: &str) {
     for key in set_b.keys() {
         if !set_a.contains_key(key) {
@@ -222,4 +222,3 @@ fn compare(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>,
 fn write(file: &mut File, message: String) {
     file.write_all(message.as_bytes()).expect("write failed!");
 }
-
