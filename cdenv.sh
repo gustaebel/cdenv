@@ -22,6 +22,7 @@ CDENV_GLOBAL=1
 CDENV_FILE=.cdenv.sh
 CDENV_RCFILE=.cdenvrc.sh
 CDENV_INSTALL="${BASH_SOURCE[0]}"
+CDENV_EXEC="$(dirname "$CDENV_INSTALL")/cdenv"
 CDENV_CACHE="$HOME/.cache/cdenv"
 
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
