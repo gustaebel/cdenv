@@ -23,6 +23,7 @@ CDENV_FILE=.cdenv.sh
 CDENV_RCFILE=.cdenvrc.sh
 CDENV_INSTALL="${BASH_SOURCE[0]}"
 CDENV_EXEC="$(dirname "$CDENV_INSTALL")/cdenv"
+CDENV_PATH="$(dirname "$CDENV_INSTALL")/libs"
 CDENV_CACHE="$HOME/.cache/cdenv"
 
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
@@ -94,10 +95,13 @@ __cdenv_load() {
     #           files that have not yet been sourced.
     # reload:   Unsource all loaded cdenv files from the directory chain and
     #           re-source them again.
-    local cmd="$1"
-    local pwd="$PWD"
+    local directories
+    local directory
+    local i
     local -a load=()
     local -a unload=()
+    local cmd="$1"
+    local pwd="$PWD"
 
     case "$cmd" in
         init)
@@ -123,16 +127,35 @@ __cdenv_load() {
         __cdenv_unsource "$directory"
     done
 
-    if [[ $cmd = reload ]]; then
-        # reload rc file
-        if [[ -e $HOME/$CDENV_RCFILE ]]; then
-            __cdenv_msg "reloading ~/$CDENV_RCFILE"
-            source "$HOME/$CDENV_RCFILE"
-        fi
-        # reload self
-        __cdenv_msg "reloading $(__cdenv_translate "$CDENV_INSTALL")"
-        source "$CDENV_INSTALL" noinit
-    fi
+    # Handle library files from CDENV_PATH and reloading the settings
+    # file and the bash module.
+    IFS=: read -a directories <<< "$CDENV_PATH"
+    case "$cmd" in
+        reload)
+            # Unsource all files from CDENV_PATH in reverse order.
+            for (( i=${#directories[@]} - 1; i >= 0; i-- )); do
+                __cdenv_unsource "${directories[i]}"
+            done
+
+            # Reload the settings file.
+            if [[ -e $HOME/$CDENV_RCFILE ]]; then
+                __cdenv_msg "reloading ~/$CDENV_RCFILE"
+                if $BASH -n "$HOME/$CDENV_RCFILE"; then
+                    source "$HOME/$CDENV_RCFILE"
+                fi
+            fi
+            # Reload this bash module.
+            __cdenv_msg "reloading $(__cdenv_translate "$CDENV_INSTALL")"
+            source "$CDENV_INSTALL" noinit
+            ;;&
+
+        init|reload)
+            # Source all files from CDENV_PATH.
+            for directory in "${directories[@]}"; do
+                __cdenv_source_many "$directory" "$directory"/*.sh
+            done
+            ;;
+    esac
 
     # Source the needed cdenv files.
     for directory in "${load[@]}"; do
@@ -154,16 +177,26 @@ __cdenv_unsource() {
 __cdenv_source() {
     # Source a single cdenv file and keep track of the changes to the
     # environment.
+    __cdenv_source_many "$1" "$1/$CDENV_FILE"
+}
+
+__cdenv_source_many() {
+    # Source multiple cdenv files from the same directory and keep track of the
+    # changes to the environment.
     local directory="$1"
-    local path="$directory/$CDENV_FILE"
-    local tmp="$CDENV_CACHE/$$.tmp"
+    shift
 
     # Save a snapshot of the environment.
+    local tmp="$CDENV_CACHE/$$.tmp"
     { declare -p; declare -f; alias; } > "$tmp"
 
     # Source the cdenv file.
     __cdenv_msg "source $(__cdenv_translate "$directory")/"
-    __cdenv_safe_source "$directory" "$path"
+    local path
+    for path; do
+        [[ -e "$path" ]] || { __cdenv_msg "ERROR: no such file: $path"; continue; }
+        __cdenv_safe_source "$directory" "$path"
+    done
 
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
