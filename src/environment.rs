@@ -55,8 +55,8 @@ pub fn compare_environments(input: &str, restore: &str) {
     if funcs_b.contains_key(ENTER_FUNC) {
         // Feed cdenv_enter() back to the calling shell, so that it is called
         // and immediately removed from the environment.
-        println!("{}\n", ENTER_FUNC);
-        println!("unset -f {}\n", ENTER_FUNC);
+        println!("{}", ENTER_FUNC);
+        println!("unset -f {}", ENTER_FUNC);
     }
 
     if funcs_b.contains_key(LEAVE_FUNC) {
@@ -65,6 +65,7 @@ pub fn compare_environments(input: &str, restore: &str) {
         write(&mut file, funcs_b.get(LEAVE_FUNC).unwrap().to_string());
         write(&mut file, format!("{}\n", LEAVE_FUNC));
         write(&mut file, format!("unset -f {}\n", LEAVE_FUNC));
+        println!("unset -f {}", LEAVE_FUNC);
     }
 
     // Remove some names from the environment.
