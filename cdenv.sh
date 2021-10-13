@@ -183,27 +183,29 @@ __cdenv_source() {
 
 __cdenv_source_many() {
     # Source multiple cdenv files from the same directory and keep track of the
-    # changes to the environment.
-    local directory="$1"
+    # changes to the environment. Try to avoid collisions with names from the
+    # sources.
+    local __cdenv_directory="$1"
     shift
 
     # Save a snapshot of the environment.
-    local tmp="$CDENV_CACHE/$$.tmp"
-    { declare -p; declare -f; alias; } > "$tmp"
+    local __cdenv_tmp="$CDENV_CACHE/$$.tmp"
+    { declare -p; declare -f; alias; } > "$__cdenv_tmp"
 
     # Source the cdenv file.
-    __cdenv_msg "source $(__cdenv_translate "$directory")/"
-    local path
-    for path; do
-        [[ -e "$path" ]] || { __cdenv_msg "ERROR: no such file: $path"; continue; }
-        __cdenv_safe_source "$directory" "$path"
+    __cdenv_msg "source $(__cdenv_translate "$__cdenv_directory")/"
+    local __cdenv_path
+    for __cdenv_path; do
+        [[ -e "${__cdenv_path}" ]] || { __cdenv_msg "ERROR: no such file: ${__cdenv_path}"; continue; }
+        __cdenv_safe_source "$__cdenv_directory" "${__cdenv_path}"
     done
+    unset __cdenv_path
 
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$tmp" "$(__cdenv_restore_path "$directory")")"
-    rm "$tmp"
+    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$__cdenv_tmp" "$(__cdenv_restore_path "$__cdenv_directory")")"
+    rm "$__cdenv_tmp"
 }
 
 cdenv() {
