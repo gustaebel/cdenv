@@ -15,21 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-on_leave() {
+::leave() {
     local funcname=$1
-    local path="$(__cdenv_restore_path "$(pwd)")"
+    local path="$(::restore_path "$(pwd)")"
     if [[ $(type -t $funcname) != function ]]; then
         echo "no function named $funcname" >&2
         return 1
     fi
-    __cdenv_debug "register on_leave function $funcname"
+    ::debug "register leave function $funcname"
     declare -f $funcname >> "$path"
     echo $funcname >> "$path"
     echo "unset -f $funcname" >> "$path"
     unset -f $funcname
 }
 
-copy_function() {
+::copy() {
     local src=$1
     local dst=$2
     if [[ $(type -t $src) != function ]]; then
@@ -39,7 +39,7 @@ copy_function() {
     eval "$(echo $dst'()'; declare -f $src | tail +2; )"
 }
 
-rename_function() {
+::rename() {
     copy_function $1 $2
     unset -f $1
 }

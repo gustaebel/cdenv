@@ -32,23 +32,23 @@ CDENV_CACHE="$HOME/.cache/cdenv"
 # trap handler.
 mkdir -p "${CDENV_CACHE:?}/$$"
 
-__cdenv_exit() {
+::exit() {
     rm -r "${CDENV_CACHE:?}/$$"
 }
-trap __cdenv_exit EXIT
+trap ::exit EXIT
 
 
-__cdenv_msg() {
+::msg() {
     # Print a message to stderr.
     [[ $CDENV_VERBOSE -ge 1 ]] && echo "$*" >&2
 }
 
-__cdenv_debug() {
+::debug() {
     # Print a debug message to stderr.
     [[ $CDENV_VERBOSE -ge 2 ]] && echo "cdenv: $*" >&2
 }
 
-__cdenv_safe_source() {
+::safe_source() {
     # Source a file in the context of a specific directory.
     local directory="$1"
     local path="$2"
@@ -64,7 +64,7 @@ __cdenv_safe_source() {
     OLDPWD="$oldpwd"
 }
 
-__cdenv_translate() {
+::translate() {
     # Translate /home/user/foo to ~/foo.
     local path="$(realpath --relative-base "$HOME" "$1")"
     if [[ ${path:0:1} != / ]]; then
@@ -78,12 +78,12 @@ __cdenv_translate() {
     fi
 }
 
-__cdenv_restore_path() {
+::restore_path() {
     # Save restore files in ~/.cache/cdenv/<pid>/<path>.sh.
     echo "$CDENV_CACHE/$$/$(echo "${1:1}" | sed 's@/@%2F@g').sh"
 }
 
-__cdenv_load() {
+::load() {
     # There are three modes of operation:
     #
     # init:     All cdenv files from every directory leading up from / to $PWD
@@ -125,7 +125,7 @@ __cdenv_load() {
 
     # First undo the changes made to the environment.
     for directory in "${unload[@]}"; do
-        __cdenv_unsource "$directory"
+        ::unsource "$directory"
     done
 
     # Handle library files from CDENV_PATH and reloading the settings
@@ -135,103 +135,103 @@ __cdenv_load() {
         reload)
             # Unsource all files from CDENV_PATH in reverse order.
             for (( i=${#directories[@]} - 1; i >= 0; i-- )); do
-                __cdenv_unsource "${directories[i]}"
+                ::unsource "${directories[i]}"
             done
 
             # Reload the settings file.
             if [[ -e $HOME/$CDENV_RCFILE ]]; then
-                __cdenv_msg "reloading ~/$CDENV_RCFILE"
+                ::msg "reloading ~/$CDENV_RCFILE"
                 if $BASH -n "$HOME/$CDENV_RCFILE"; then
                     source "$HOME/$CDENV_RCFILE"
                 fi
             fi
             # Reload this bash module.
-            __cdenv_msg "reloading $(__cdenv_translate "$CDENV_INSTALL")"
+            ::msg "reloading $(::translate "$CDENV_INSTALL")"
             source "$CDENV_INSTALL" noinit
             ;;&
 
         init|reload)
             # Source all files from CDENV_PATH.
             for directory in "${directories[@]}"; do
-                __cdenv_source_many "$directory" "$directory"/*.sh
+                ::source_many "$directory" "$directory"/*.sh
             done
             ;;
     esac
 
     # Source the needed cdenv files.
     for directory in "${load[@]}"; do
-        __cdenv_source "$directory"
+        ::source "$directory"
     done
 }
 
-__cdenv_unsource() {
+::unsource() {
     # Undo the changes from a single cdenv file.
     local directory="$1"
-    local path="$(__cdenv_restore_path "$directory")"
-    __cdenv_msg "unsource $(__cdenv_translate "$directory")/"
+    local path="$(::restore_path "$directory")"
+    ::msg "unsource $(::translate "$directory")/"
     if [[ -e $path ]]; then
-        __cdenv_safe_source "$directory" "$path"
+        ::safe_source "$directory" "$path"
         rm "$path"
     fi
 }
 
-__cdenv_source() {
+::source() {
     # Source a single cdenv file and keep track of the changes to the
     # environment.
-    __cdenv_source_many "$1" "$1/$CDENV_FILE"
+    ::source_many "$1" "$1/$CDENV_FILE"
 }
 
-__cdenv_source_many() {
+::source_many() {
     # Source multiple cdenv files from the same directory and keep track of the
     # changes to the environment. Try to avoid collisions with names from the
     # sources.
-    local __cdenv_directory="$1"
+    local cdenv_directory="$1"
+    local cdenv_path
     shift
 
     # Save a snapshot of the environment.
-    local __cdenv_tmp="$CDENV_CACHE/$$.tmp"
-    { declare -p; declare -f; alias; } > "$__cdenv_tmp"
+    local cdenv_tmp="$CDENV_CACHE/$$.tmp"
+    { declare -p; declare -f; alias; } > "$cdenv_tmp"
 
     # Source the cdenv file.
-    __cdenv_msg "source $(__cdenv_translate "$__cdenv_directory")/"
-    local __cdenv_path
-    for __cdenv_path; do
-        [[ -e "${__cdenv_path}" ]] || { __cdenv_msg "ERROR: no such file: ${__cdenv_path}"; continue; }
-        __cdenv_safe_source "$__cdenv_directory" "${__cdenv_path}"
+    ::msg "source $(::translate "$cdenv_directory")/"
+    for cdenv_path; do
+        [[ -e "${cdenv_path}" ]] || { ::msg "ERROR: no such file: ${cdenv_path}"; continue; }
+        ::safe_source "$cdenv_directory" "${cdenv_path}"
     done
-    unset __cdenv_path
+    unset cdenv_path
 
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$__cdenv_tmp" "$(__cdenv_restore_path "$__cdenv_directory")")"
-    rm "$__cdenv_tmp"
+    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$cdenv_tmp" "$(::restore_path "$cdenv_directory")")"
+    rm "$cdenv_tmp"
 }
 
 cdenv() {
     case "$1" in
         init)
-            __cdenv_load init
+            ::load init
             CDENV_LAST="$PWD"
             ;;
 
         load)
-            __cdenv_load update "${CDENV_LAST:-/}"
+            ::load update "${CDENV_LAST:-/}"
             CDENV_LAST="$PWD"
             ;;
 
         reload)
-            __cdenv_load reload
+            ::load reload
             ;;
 
         edit)
             # unload
-            local path="$(__cdenv_restore_path "$PWD")"
-            [[ -e "$path" ]] && __cdenv_unsource "$PWD"
+            local path="$(::restore_path "$PWD")"
+            [[ -e "$path" ]] && ::unsource "$PWD"
             # edit
             ${EDITOR:-vi} $CDENV_FILE
             # reload
-            [[ -e "$CDENV_FILE" ]] && __cdenv_source "$PWD"
+            [[ -e "$CDENV_FILE" ]] && ::source "$PWD"
             ;;
 
         version)
@@ -300,18 +300,18 @@ else
     done
 
     if [[ $__found -eq 1 ]]; then
-        __cdenv_debug "cdenv is already installed"
+        ::debug "cdenv is already installed"
     else
         # Using +=() should always work regardless of whether PROMPT_COMMAND is
         # unset, a normal variable or an array. The result however will be an
         # array.
-        __cdenv_debug "add to \$PROMPTCOMMAND"
+        ::debug "add to \$PROMPTCOMMAND"
         PROMPT_COMMAND+=("cdenv load")
     fi
     unset __found
 
-    __cdenv_debug "executable: $CDENV_EXEC"
-    __cdenv_debug "cache directory: $(__cdenv_translate "$CDENV_CACHE/$$")"
+    ::debug "executable: $CDENV_EXEC"
+    ::debug "cache directory: $(::translate "$CDENV_CACHE/$$")"
 
     [[ $1 != noinit ]] && cdenv init
 fi
