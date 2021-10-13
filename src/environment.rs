@@ -24,11 +24,7 @@ use std::io::prelude::*;
 
 use regex::{Regex,Captures};
 
-const ENTER_FUNC: &'static str = "cdenv_enter";
-const LEAVE_FUNC: &'static str = "cdenv_leave";
-
 const EXCLUDE_VARS: &'static [&'static str] = &["_", "OLDPWD"];
-const EXCLUDE_FUNCS: &'static [&'static str] = &[ENTER_FUNC, LEAVE_FUNC];
 
 #[derive(PartialEq)]
 enum LineState {
@@ -55,27 +51,9 @@ pub fn compare_environments(input: &str, restore: &str) {
     // stdlib function can put code in it in advance.
     let mut file = OpenOptions::new().append(true).create(true).open(restore).unwrap();
 
-    if funcs_b.contains_key(ENTER_FUNC) {
-        // Feed cdenv_enter() back to the calling shell, so that it is called
-        // and immediately removed from the environment.
-        println!("{}", ENTER_FUNC);
-        println!("unset -f {}", ENTER_FUNC);
-    }
-
-    if funcs_b.contains_key(LEAVE_FUNC) {
-        // Register cdenv_leave() in the restore file, so that it is called
-        // and removed from the environment when the directory is left.
-        write(&mut file, funcs_b.get(LEAVE_FUNC).unwrap().to_string());
-        write(&mut file, format!("{}\n", LEAVE_FUNC));
-        write(&mut file, format!("unset -f {}\n", LEAVE_FUNC));
-        println!("unset -f {}", LEAVE_FUNC);
-    }
-
     // Remove some names from the environment.
     prune_unwanted_names(EXCLUDE_VARS, &mut vars_a);
     prune_unwanted_names(EXCLUDE_VARS, &mut vars_b);
-    prune_unwanted_names(EXCLUDE_FUNCS, &mut funcs_a);
-    prune_unwanted_names(EXCLUDE_FUNCS, &mut funcs_b);
 
     // Compare the vars, funcs and alias sets and write statements to stdout
     // and the restore file.
