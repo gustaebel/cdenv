@@ -152,7 +152,7 @@ __cdenv_source() {
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    { declare -p; declare -f; alias; } | eval "$($CDENV_EXEC compare "$tmp" "$(__cdenv_restore_path "$directory")")"
+    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$tmp" "$(__cdenv_restore_path "$directory")")"
     rm "$tmp"
 }
 
