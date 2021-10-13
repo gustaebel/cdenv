@@ -226,8 +226,8 @@ cdenv() {
 
         edit)
             # unload
-            local path="$(__cdenv_restore_path "$directory")"
-            [[ -e "$path" ]] && __cdenv_unsource "$directory"
+            local path="$(__cdenv_restore_path "$PWD")"
+            [[ -e "$path" ]] && __cdenv_unsource "$PWD"
             # edit
             ${EDITOR:-vi} $CDENV_FILE
             # reload
