@@ -53,8 +53,12 @@ __cdenv_safe_source() {
     local path="$2"
     local oldpwd="$OLDPWD"
     local savedir="$PWD"
+
     builtin cd "$directory" || return 1
-    source "$path"
+    # Check the script for errors before sourcing.
+    if $BASH -n "$path"; then
+        source "$path"
+    fi
     builtin cd "$savedir" || return 1
     OLDPWD="$oldpwd"
 }
