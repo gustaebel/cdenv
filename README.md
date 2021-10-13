@@ -112,6 +112,12 @@ Some of *cdenv*'s settings can be customized with a file called `~/.cdenvrc.sh`.
     accidentally executing other people's shell code from a tar file or source
     repo.
 
+* `CDENV_PATH`
+
+    A colon-separated list of directories (similar to `PATH`) with shell
+    scripts to load on startup. The files must end with `.sh` and are loaded in
+    alphabetical order.
+
 
 ## Prerequisites
 
