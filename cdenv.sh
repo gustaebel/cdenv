@@ -265,6 +265,13 @@ CDENV_FILE={basename}
     accidentally executing other people's shell code from a tar file or source
     repo.
 
+CDENV_PATH={directory}[:{directory}]
+    (current: $CDENV_PATH)
+    A colon-separated list of directories (similar to PATH) with shell scripts
+    to load on startup. The files must end with '.sh' and are loaded in
+    alphabetical order.
+
+
 commands:
     help        this help message
     reload      unload and reload the complete cdenv environment and all
