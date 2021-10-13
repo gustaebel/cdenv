@@ -80,7 +80,7 @@ __cdenv_translate() {
 
 __cdenv_restore_path() {
     # Save restore files in ~/.cache/cdenv/<pid>/<path>.sh.
-    echo "$CDENV_CACHE/$$/$(echo "${1:1}" | tr / _).sh"
+    echo "$CDENV_CACHE/$$/$(echo "${1:1}" | sed 's@/@%2F@g').sh"
 }
 
 __cdenv_load() {
