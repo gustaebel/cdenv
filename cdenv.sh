@@ -247,13 +247,13 @@ EOF
 if [ -z "$BASH_VERSION" ] || [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
     echo "CDENV ERROR: only bash >= 4 is supported!" >&2
 else
-    found=0
+    __found=0
     for x in "${PROMPT_COMMAND[@]}"; do
-        [[ $x = "cdenv load" ]] && found=1
+        [[ $x = "cdenv load" ]] && __found=1
     done
 
-    if [[ $found -eq 1 ]]; then
-        __cdenv_debug "cdenv is already installed, reloading"
+    if [[ $__found -eq 1 ]]; then
+        __cdenv_debug "cdenv is already installed"
     else
         # Using +=() should always work regardless of whether PROMPT_COMMAND is
         # unset, a normal variable or an array. The result however will be an
@@ -261,7 +261,7 @@ else
         __cdenv_debug "add to \$PROMPTCOMMAND"
         PROMPT_COMMAND+=("cdenv load")
     fi
-    unset found
+    unset __found
 
     __cdenv_debug "executable: $CDENV_EXEC"
     __cdenv_debug "cache directory: $(__cdenv_translate "$CDENV_CACHE/$$")"
