@@ -29,7 +29,7 @@ CDENV_CACHE="$HOME/.cache/cdenv"
 
 # Create a directory for the restore files which will be removed in the EXIT
 # trap handler.
-mkdir -p "$CDENV_CACHE/$$"
+mkdir -p "${CDENV_CACHE:?}/$$"
 
 __cdenv_exit() {
     rm -r "${CDENV_CACHE:?}/$$"
