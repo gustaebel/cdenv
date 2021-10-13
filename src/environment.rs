@@ -19,6 +19,7 @@ use std::io::{self, BufRead, BufReader};
 use std::collections::HashMap;
 use std::iter::Iterator;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::prelude::*;
 
 use regex::{Regex,Captures};
@@ -50,7 +51,9 @@ pub fn compare_environments(input: &str, restore: &str) {
     parse_environment(Some(input), &mut vars_a, &mut funcs_a, &mut alias_a);
     parse_environment(None, &mut vars_b, &mut funcs_b, &mut alias_b);
 
-    let mut file = File::create(restore).unwrap();
+    // We open the restore file in append mode, so that e.g. the on_leave()
+    // stdlib function can put code in it in advance.
+    let mut file = OpenOptions::new().append(true).create(true).open(restore).unwrap();
 
     if funcs_b.contains_key(ENTER_FUNC) {
         // Feed cdenv_enter() back to the calling shell, so that it is called
