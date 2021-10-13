@@ -11,7 +11,7 @@ cdenv:
 	cp target/release/cdenv .
 
 check:
-	shellcheck cdenv.sh
+	shellcheck -e SC1090,SC2155 cdenv.sh
 
 install: cdenv
 	mkdir -p $(DESTDIR)/usr/lib/cdenv

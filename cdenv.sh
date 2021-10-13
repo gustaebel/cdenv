@@ -32,19 +32,19 @@ CDENV_CACHE="$HOME/.cache/cdenv"
 mkdir -p "$CDENV_CACHE/$$"
 
 __cdenv_exit() {
-    rm -r "$CDENV_CACHE/$$"
+    rm -r "${CDENV_CACHE:?}/$$"
 }
 trap __cdenv_exit EXIT
 
 
 __cdenv_msg() {
     # Print a message to stderr.
-    [[ $CDENV_VERBOSE -ge 1 ]] && echo $@ >&2
+    [[ $CDENV_VERBOSE -ge 1 ]] && echo "$*" >&2
 }
 
 __cdenv_debug() {
     # Print a debug message to stderr.
-    [[ $CDENV_VERBOSE -ge 2 ]] && echo "cdenv: $@" >&2
+    [[ $CDENV_VERBOSE -ge 2 ]] && echo "cdenv: $*" >&2
 }
 
 __cdenv_safe_source() {
@@ -53,9 +53,9 @@ __cdenv_safe_source() {
     local path="$2"
     local oldpwd="$OLDPWD"
     local savedir="$PWD"
-    builtin cd "$directory"
+    builtin cd "$directory" || return 1
     source "$path"
-    builtin cd "$savedir"
+    builtin cd "$savedir" || return 1
     OLDPWD="$oldpwd"
 }
 
@@ -64,9 +64,9 @@ __cdenv_translate() {
     local path="$(realpath --relative-base "$HOME" "$1")"
     if [[ ${path:0:1} != / ]]; then
         if [[ $path = . ]]; then
-            echo "~/"
+            echo \~/
         else
-            echo "~/$path/"
+            echo \~/"$path"/
         fi
     else
         echo "$path/"
@@ -75,7 +75,7 @@ __cdenv_translate() {
 
 __cdenv_restore_path() {
     # Save restore files in ~/.cache/cdenv/<pid>/<path>.sh.
-    echo "$CDENV_CACHE/$$/$(echo ${1:1} | tr / _).sh"
+    echo "$CDENV_CACHE/$$/$(echo "${1:1}" | tr / _).sh"
 }
 
 __cdenv_load() {
@@ -92,16 +92,17 @@ __cdenv_load() {
     #           re-source them again.
     local cmd="$1"
     local pwd="$PWD"
+    local -a load=()
+    local -a unload=()
 
     case "$cmd" in
         init)
             eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --file=$CDENV_FILE "$pwd")"
-            unload=() # There is nothing yet to unload.
             ;;
         update)
             local oldpwd="$2"
             # The current working directory has not been changed, do nothing.
-            [[ $oldpwd = $pwd ]] && return;
+            [[ $oldpwd = "$pwd" ]] && return;
             eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --file=$CDENV_FILE --oldpwd="$oldpwd" "$pwd")"
             ;;
         reload)
