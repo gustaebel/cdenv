@@ -230,24 +230,24 @@ fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>
               file: &mut File, suffix: &str, unset: &str) {
     for key in set_b.keys() {
         if !set_a.contains_key(key) {
-            println!("__cdenv_debug '+ {}{}'", key, suffix);
-            write(file, format!("__cdenv_debug undo '+ {}{}'\n", key, suffix));
+            println!("__cdenv_debug 'add     {}{}'", key, suffix);
+            write(file, format!("__cdenv_debug 'remove  {}{}'\n", key, suffix));
             write(file, format!("{} {}\n", unset, key));
         }
     }
 
     for key in set_a.keys() {
         if !set_b.contains_key(key) {
-            println!("__cdenv_debug '- {}{}'", key, suffix);
-            write(file, format!("__cdenv_debug undo '- {}{}'\n", key, suffix));
+            println!("__cdenv_debug 'remove  {}{}'", key, suffix);
+            write(file, format!("__cdenv_debug 'restore {}{}'\n", key, suffix));
             write(file, set_a.get(key).unwrap().to_string());
         }
     }
 
     for key in set_b.keys() {
         if set_a.contains_key(key) && set_a.get(key) != set_b.get(key) {
-            println!("__cdenv_debug '~ {}{}'", key, suffix);
-            write(file, format!("__cdenv_debug undo '~ {}{}'\n", key, suffix));
+            println!("__cdenv_debug 'modify  {}{}'", key, suffix);
+            write(file, format!("__cdenv_debug 'restore {}{}'\n", key, suffix));
             write(file, format!("{} {}\n", unset, key));
             write(file, set_a.get(key).unwrap().to_string());
         }
