@@ -28,3 +28,18 @@ on_leave() {
     echo "unset -f $funcname" >> "$path"
     unset -f $funcname
 }
+
+copy_function() {
+    local src=$1
+    local dst=$2
+    if [[ $(type -t $src) != function ]]; then
+        echo "no function named $src" >&2
+        return 1
+    fi
+    eval "$(echo $dst'()'; declare -f $src | tail +2; )"
+}
+
+rename_function() {
+    copy_function $1 $2
+    unset -f $1
+}
