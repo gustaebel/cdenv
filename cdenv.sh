@@ -106,6 +106,7 @@ __cdenv_load() {
     case "$cmd" in
         init)
             eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --file=$CDENV_FILE "$pwd")"
+            unload=() # There is nothing yet to unload.
             ;;
         update)
             local oldpwd="$2"
