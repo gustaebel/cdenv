@@ -60,16 +60,16 @@ __cdenv_safe_source() {
 }
 
 __cdenv_translate() {
-    # Translate /home/user/foo to ~/foo/.
+    # Translate /home/user/foo to ~/foo.
     local path="$(realpath --relative-base "$HOME" "$1")"
     if [[ ${path:0:1} != / ]]; then
         if [[ $path = . ]]; then
-            echo \~/
+            echo \~
         else
-            echo \~/"$path"/
+            echo \~/"$path"
         fi
     else
-        echo "$path/"
+        echo "$path"
     fi
 }
 
@@ -119,6 +119,17 @@ __cdenv_load() {
         __cdenv_unsource "$directory"
     done
 
+    if [[ $cmd = reload ]]; then
+        # reload rc file
+        if [[ -e $HOME/$CDENV_RCFILE ]]; then
+            __cdenv_msg "reloading ~/$CDENV_RCFILE"
+            source "$HOME/$CDENV_RCFILE"
+        fi
+        # reload self
+        __cdenv_msg "reloading $(__cdenv_translate "$CDENV_INSTALL")"
+        source "$CDENV_INSTALL" noinit
+    fi
+
     # Source the needed cdenv files.
     for directory in "${load[@]}"; do
         __cdenv_source "$directory"
@@ -129,7 +140,7 @@ __cdenv_unsource() {
     # Undo the changes from a single cdenv file.
     local directory="$1"
     local path="$(__cdenv_restore_path "$directory")"
-    __cdenv_msg "unsource $(__cdenv_translate "$directory")"
+    __cdenv_msg "unsource $(__cdenv_translate "$directory")/"
     if [[ -e $path ]]; then
         __cdenv_safe_source "$directory" "$path"
         rm "$path"
@@ -147,7 +158,7 @@ __cdenv_source() {
     { declare -p; declare -f; alias; } > "$tmp"
 
     # Source the cdenv file.
-    __cdenv_msg "source $(__cdenv_translate "$directory")"
+    __cdenv_msg "source $(__cdenv_translate "$directory")/"
     __cdenv_safe_source "$directory" "$path"
 
     # Save another snapshot of the environment and compare both. Create a
@@ -170,10 +181,6 @@ cdenv() {
             ;;
 
         reload)
-            # reload rc file
-            [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
-            # reload self
-            source "$CDENV_INSTALL" noinit
             __cdenv_load reload
             ;;
 
@@ -259,5 +266,5 @@ else
     __cdenv_debug "executable: $CDENV_EXEC"
     __cdenv_debug "cache directory: $(__cdenv_translate "$CDENV_CACHE/$$")"
 
-    [[ $1 = noinit ]] || cdenv init
+    [[ $1 != noinit ]] && cdenv init
 fi
