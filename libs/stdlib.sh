@@ -97,10 +97,11 @@ c.set_remove() {
 
 c.var_contains() {
     local -n var=${1:?}
-    local sep=${2:-:}
+    local x="${2:-:}"
+    local sep="${3:-:}"
     local -a __cdenv_var_contains
     IFS="$sep" read -ra __cdenv_var_contains <<< "$var"
-    c.array_contains __cdenv_var_contains "${2:?}"
+    c.array_contains __cdenv_var_contains "$x"
 }
 
 c.var_prepend() {
