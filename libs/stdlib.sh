@@ -43,3 +43,15 @@ c.rename() {
     copy_function ${1:?} ${2:?}
     unset -f $1
 }
+
+c.callback_add() {
+    if [[ $(type -t ${1:?}) = function ]]; then
+        c.set_append CDENV_CALLBACK ${1:?}
+    else
+        c.err "$1 is not defined or is no function"
+    fi
+}
+
+c.callback_remove() {
+    c.set_remove CDENV_CALLBACK ${1:?}
+}

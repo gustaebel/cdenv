@@ -25,6 +25,7 @@ CDENV_INSTALL="${BASH_SOURCE[0]}"
 CDENV_EXEC="$(dirname "$CDENV_INSTALL")/cdenv"
 CDENV_PATH="$(dirname "$CDENV_INSTALL")/libs"
 CDENV_CACHE="$HOME/.cache/cdenv"
+declare -a CDENV_CALLBACK=()
 
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
 
@@ -37,6 +38,11 @@ c.exit() {
 }
 trap c.exit EXIT
 
+
+c.err() {
+    # Print an error message to stderr.
+    echo "ERROR: $*" >&2
+}
 
 c.msg() {
     # Print a message to stderr.
@@ -218,6 +224,10 @@ cdenv() {
         load)
             c.load update "${CDENV_LAST:-/}"
             CDENV_LAST="$PWD"
+            local cb
+            for cb in ${CDENV_CALLBACK[@]}; do
+                $cb
+            done
             ;;
 
         reload)
