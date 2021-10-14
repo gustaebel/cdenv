@@ -25,6 +25,7 @@ CDENV_INSTALL="${BASH_SOURCE[0]}"
 CDENV_EXEC="$(dirname "$CDENV_INSTALL")/cdenv"
 CDENV_PATH="$(dirname "$CDENV_INSTALL")/libs"
 CDENV_CACHE="$HOME/.cache/cdenv"
+CDENV_BASE=
 declare -a CDENV_CALLBACK=()
 
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
@@ -167,6 +168,7 @@ c.load() {
     # Source the needed cdenv files.
     for directory in "${load[@]}"; do
         c.source "$directory"
+        CDENV_BASE="$directory"
     done
 }
 
@@ -193,6 +195,7 @@ c.source_many() {
     # sources.
     local cdenv_directory="$1"
     local cdenv_path
+    local cdenv_restore="$(c.restore_path "$cdenv_directory")"
     shift
 
     # Save a snapshot of the environment.
@@ -210,8 +213,10 @@ c.source_many() {
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$cdenv_tmp" "$(c.restore_path "$cdenv_directory")")"
+    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$cdenv_tmp" "$cdenv_restore")"
     rm "$cdenv_tmp"
+
+    echo CDENV_BASE=\"$CDENV_BASE\" >> "$cdenv_restore"
 }
 
 cdenv() {
