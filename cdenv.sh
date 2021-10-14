@@ -240,13 +240,27 @@ cdenv() {
             ;;
 
         edit)
+            local base
+            case "$2" in
+                -b|--base)
+                    base="$CDENV_BASE"
+                    ;;
+                "")
+                    base="$PWD"
+                    ;;
+                *)
+                    c.err "invalid option $2"
+                    return 1
+                    ;;
+            esac
+
             # unload
-            local path="$(c.restore_path "$PWD")"
-            [[ -e "$path" ]] && c.unsource "$PWD"
+            local path="$(c.restore_path "$base")"
+            [[ -e "$path" ]] && c.unsource "$base"
             # edit
-            ${EDITOR:-vi} $CDENV_FILE
+            ${EDITOR:-vi} "$base/$CDENV_FILE"
             # reload
-            [[ -e "$CDENV_FILE" ]] && c.source "$PWD"
+            [[ -e "$base/$CDENV_FILE" ]] && c.source "$base"
             ;;
 
         version)
@@ -291,11 +305,12 @@ CDENV_PATH={directory}[:{directory}]
 
 
 commands:
-    help        this help message
-    reload      unload and reload the complete cdenv environment and all
-                $CDENV_FILE in the current directory hierarchy
-    edit        load the $CDENV_FILE from the current working directory in the
-                EDITOR (${EDITOR:-vi}) and reload it after that
+    help        This help message.
+    reload      Unload and reload the complete cdenv environment and all
+                $CDENV_FILE in the current directory hierarchy.
+    edit [-b]   Load the $CDENV_FILE from the current working directory (or the
+                nearest base if -b/--base is given) in the EDITOR (${EDITOR:-vi})
+                and reload it after that.
 EOF
             ;;
 
