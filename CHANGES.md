@@ -1,3 +1,11 @@
+### Version 0.4.6 - (2021-10-14)
+
+- Add var and array functions.
+- Use more tab-completion friendly function prefix `c.`.
+- Add `CDENV_CALLBACK`.
+- Add `-b/--base` to edit command.
+
+
 ### Version 0.4.5 - (2021-10-14)
 
 - Use `::` as function prefix instead of `__cdenv`.
