@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# cdenv
+# cdenv - cdenv.sh
 #
 # Copyright (C) 2021  Lars Gustäbel <lars@gustaebel.de>
 #

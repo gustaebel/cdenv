@@ -1,4 +1,4 @@
-// cdenv
+// cdenv - main.rs
 //
 // Copyright (C) 2021  Lars Gustäbel <lars@gustaebel.de>
 //
