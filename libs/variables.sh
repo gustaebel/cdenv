@@ -26,19 +26,16 @@ c.array_contains() {
 }
 
 c.array_prepend() {
-    c.array_contains ${1:?} "${2:?}" && return 1
     local -n __cdenv_array_prepend=${1:?}
     __cdenv_array_prepend=("$2" "${__cdenv_array_prepend[@]}")
 }
 
 c.array_append() {
-    c.array_contains ${1:?} "${2:?}" && return 1
     local -n __cdenv_array_append=${1:?}
     __cdenv_array_append+=("$2")
 }
 
 c.array_remove() {
-    c.array_contains ${1:?} "${2:?}" || return 1
     local x="$2"
     local -n __cdenv_array_remove=$1
     local i
