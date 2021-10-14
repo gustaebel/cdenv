@@ -26,7 +26,6 @@ use regex::{Regex,Captures};
 
 const EXCLUDE_VARS: &'static [&'static str] = &["_", "OLDPWD"];
 
-#[derive(PartialEq)]
 enum LineState {
     Default,
     InVariableDef,
