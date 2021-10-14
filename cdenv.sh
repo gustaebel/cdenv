@@ -32,23 +32,23 @@ CDENV_CACHE="$HOME/.cache/cdenv"
 # trap handler.
 mkdir -p "${CDENV_CACHE:?}/$$"
 
-::exit() {
+c.exit() {
     rm -r "${CDENV_CACHE:?}/$$"
 }
-trap ::exit EXIT
+trap c.exit EXIT
 
 
-::msg() {
+c.msg() {
     # Print a message to stderr.
     [[ $CDENV_VERBOSE -ge 1 ]] && echo "$*" >&2
 }
 
-::debug() {
+c.debug() {
     # Print a debug message to stderr.
     [[ $CDENV_VERBOSE -ge 2 ]] && echo "cdenv: $*" >&2
 }
 
-::safe_source() {
+c.safe_source() {
     # Source a file in the context of a specific directory.
     local directory="$1"
     local path="$2"
@@ -64,7 +64,7 @@ trap ::exit EXIT
     OLDPWD="$oldpwd"
 }
 
-::translate() {
+c.translate() {
     # Translate /home/user/foo to ~/foo.
     local path="$(realpath --relative-base "$HOME" "$1")"
     if [[ ${path:0:1} != / ]]; then
@@ -78,12 +78,12 @@ trap ::exit EXIT
     fi
 }
 
-::restore_path() {
+c.restore_path() {
     # Save restore files in ~/.cache/cdenv/<pid>/<path>.sh.
     echo "$CDENV_CACHE/$$/$(echo "${1:1}" | sed 's@/@%2F@g').sh"
 }
 
-::load() {
+c.load() {
     # There are three modes of operation:
     #
     # init:     All cdenv files from every directory leading up from / to $PWD
@@ -125,7 +125,7 @@ trap ::exit EXIT
 
     # First undo the changes made to the environment.
     for directory in "${unload[@]}"; do
-        ::unsource "$directory"
+        c.unsource "$directory"
     done
 
     # Handle library files from CDENV_PATH and reloading the settings
@@ -135,53 +135,53 @@ trap ::exit EXIT
         reload)
             # Unsource all files from CDENV_PATH in reverse order.
             for (( i=${#directories[@]} - 1; i >= 0; i-- )); do
-                ::unsource "${directories[i]}"
+                c.unsource "${directories[i]}"
             done
 
             # Reload the settings file.
             if [[ -e $HOME/$CDENV_RCFILE ]]; then
-                ::msg "reloading ~/$CDENV_RCFILE"
+                c.msg "reloading ~/$CDENV_RCFILE"
                 if $BASH -n "$HOME/$CDENV_RCFILE"; then
                     source "$HOME/$CDENV_RCFILE"
                 fi
             fi
             # Reload this bash module.
-            ::msg "reloading $(::translate "$CDENV_INSTALL")"
+            c.msg "reloading $(c.translate "$CDENV_INSTALL")"
             source "$CDENV_INSTALL" noinit
             ;;&
 
         init|reload)
             # Source all files from CDENV_PATH.
             for directory in "${directories[@]}"; do
-                ::source_many "$directory" "$directory"/*.sh
+                c.source_many "$directory" "$directory"/*.sh
             done
             ;;
     esac
 
     # Source the needed cdenv files.
     for directory in "${load[@]}"; do
-        ::source "$directory"
+        c.source "$directory"
     done
 }
 
-::unsource() {
+c.unsource() {
     # Undo the changes from a single cdenv file.
     local directory="$1"
-    local path="$(::restore_path "$directory")"
-    ::msg "unsource $(::translate "$directory")/"
+    local path="$(c.restore_path "$directory")"
+    c.msg "unsource $(c.translate "$directory")/"
     if [[ -e $path ]]; then
-        ::safe_source "$directory" "$path"
+        c.safe_source "$directory" "$path"
         rm "$path"
     fi
 }
 
-::source() {
+c.source() {
     # Source a single cdenv file and keep track of the changes to the
     # environment.
-    ::source_many "$1" "$1/$CDENV_FILE"
+    c.source_many "$1" "$1/$CDENV_FILE"
 }
 
-::source_many() {
+c.source_many() {
     # Source multiple cdenv files from the same directory and keep track of the
     # changes to the environment. Try to avoid collisions with names from the
     # sources.
@@ -194,44 +194,44 @@ trap ::exit EXIT
     { declare -p; declare -f; alias; } > "$cdenv_tmp"
 
     # Source the cdenv file.
-    ::msg "source $(::translate "$cdenv_directory")/"
+    c.msg "source $(c.translate "$cdenv_directory")/"
     for cdenv_path; do
-        [[ -e "${cdenv_path}" ]] || { ::msg "ERROR: no such file: ${cdenv_path}"; continue; }
-        ::safe_source "$cdenv_directory" "${cdenv_path}"
+        [[ -e "${cdenv_path}" ]] || { c.msg "ERROR: no such file: ${cdenv_path}"; continue; }
+        c.safe_source "$cdenv_directory" "${cdenv_path}"
     done
     unset cdenv_path
 
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$cdenv_tmp" "$(::restore_path "$cdenv_directory")")"
+    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$cdenv_tmp" "$(c.restore_path "$cdenv_directory")")"
     rm "$cdenv_tmp"
 }
 
 cdenv() {
     case "$1" in
         init)
-            ::load init
+            c.load init
             CDENV_LAST="$PWD"
             ;;
 
         load)
-            ::load update "${CDENV_LAST:-/}"
+            c.load update "${CDENV_LAST:-/}"
             CDENV_LAST="$PWD"
             ;;
 
         reload)
-            ::load reload
+            c.load reload
             ;;
 
         edit)
             # unload
-            local path="$(::restore_path "$PWD")"
-            [[ -e "$path" ]] && ::unsource "$PWD"
+            local path="$(c.restore_path "$PWD")"
+            [[ -e "$path" ]] && c.unsource "$PWD"
             # edit
             ${EDITOR:-vi} $CDENV_FILE
             # reload
-            [[ -e "$CDENV_FILE" ]] && ::source "$PWD"
+            [[ -e "$CDENV_FILE" ]] && c.source "$PWD"
             ;;
 
         version)
@@ -300,18 +300,18 @@ else
     done
 
     if [[ $__found -eq 1 ]]; then
-        ::debug "cdenv is already installed"
+        c.debug "cdenv is already installed"
     else
         # Using +=() should always work regardless of whether PROMPT_COMMAND is
         # unset, a normal variable or an array. The result however will be an
         # array.
-        ::debug "add to \$PROMPTCOMMAND"
+        c.debug "add to \$PROMPTCOMMAND"
         PROMPT_COMMAND+=("cdenv load")
     fi
     unset __found
 
-    ::debug "executable: $CDENV_EXEC"
-    ::debug "cache directory: $(::translate "$CDENV_CACHE/$$")"
+    c.debug "executable: $CDENV_EXEC"
+    c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
 
     [[ $1 != noinit ]] && cdenv init
 fi

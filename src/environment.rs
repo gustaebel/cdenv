@@ -76,7 +76,7 @@ fn prune_unwanted_names(exclude: &'static [&'static str], set: &mut HashMap<Stri
 // Parse output of { declare -p; declare -f; alias; }.
 // Notes:
 // Here we create shell code that is later used to be sourced to restore the environment
-// prior to the changes. Because we source this code inside the ::load function we
+// prior to the changes. Because we source this code inside the c.load function we
 // have to add -g explicitly to declare all variables global.
 fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
                      set_func: &mut HashMap<String, String>, set_alias: &mut HashMap<String, String>) {
@@ -194,7 +194,7 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
                         // string, add a single-quote and open it again: 'foo'\''bar' or
                         // 'foo'"'"'bar'.
                         line = line.replace("'", "'\\''");
-                        println!("::debug 'unable to parse: {}'", line);
+                        println!("c.debug 'unable to parse: {}'", line);
                     }
                 }
             }
@@ -211,24 +211,24 @@ fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>
               file: &mut File, suffix: &str, unset: &str) {
     for key in set_b.keys() {
         if !set_a.contains_key(key) {
-            println!("::debug 'add     {}{}'", key, suffix);
-            write(file, format!("::debug 'remove  {}{}'\n", key, suffix));
+            println!("c.debug 'add     {}{}'", key, suffix);
+            write(file, format!("c.debug 'remove  {}{}'\n", key, suffix));
             write(file, format!("{} {}\n", unset, key));
         }
     }
 
     for key in set_a.keys() {
         if !set_b.contains_key(key) {
-            println!("::debug 'remove  {}{}'", key, suffix);
-            write(file, format!("::debug 'restore {}{}'\n", key, suffix));
+            println!("c.debug 'remove  {}{}'", key, suffix);
+            write(file, format!("c.debug 'restore {}{}'\n", key, suffix));
             write(file, set_a.get(key).unwrap().to_string());
         }
     }
 
     for key in set_b.keys() {
         if set_a.contains_key(key) && set_a.get(key) != set_b.get(key) {
-            println!("::debug 'modify  {}{}'", key, suffix);
-            write(file, format!("::debug 'restore {}{}'\n", key, suffix));
+            println!("c.debug 'modify  {}{}'", key, suffix);
+            write(file, format!("c.debug 'restore {}{}'\n", key, suffix));
             write(file, format!("{} {}\n", unset, key));
             write(file, set_a.get(key).unwrap().to_string());
         }

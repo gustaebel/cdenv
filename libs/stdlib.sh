@@ -15,21 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-::leave() {
+c.leave() {
     local funcname=${1:?}
-    local path="$(::restore_path "$(pwd)")"
+    local path="$(c.restore_path "$(pwd)")"
     if [[ $(type -t $funcname) != function ]]; then
         echo "no function named $funcname" >&2
         return 1
     fi
-    ::debug "register leave function $funcname"
+    c.debug "register leave function $funcname"
     declare -f $funcname >> "$path"
     echo $funcname >> "$path"
     echo "unset -f $funcname" >> "$path"
     unset -f $funcname
 }
 
-::copy() {
+c.copy() {
     local src=${1:?}
     local dst=${2:?}
     if [[ $(type -t $src) != function ]]; then
@@ -39,12 +39,12 @@
     eval "$(echo $dst'()'; declare -f $src | tail +2; )"
 }
 
-::rename() {
+c.rename() {
     copy_function ${1:?} ${2:?}
     unset -f $1
 }
 
-::array_contains() {
+c.array_contains() {
     local x="${2:?}"
     local -n __cdenv_array_contains=${1:?}
     local a
@@ -54,20 +54,20 @@
     return 1
 }
 
-::array_prepend() {
-    ::array_contains ${1:?} "${2:?}" && return 1
+c.array_prepend() {
+    c.array_contains ${1:?} "${2:?}" && return 1
     local -n __cdenv_array_prepend=${1:?}
     __cdenv_array_prepend=("$2" "${__cdenv_array_prepend[@]}")
 }
 
-::array_append() {
-    ::array_contains ${1:?} "${2:?}" && return 1
+c.array_append() {
+    c.array_contains ${1:?} "${2:?}" && return 1
     local -n __cdenv_array_append=${1:?}
     __cdenv_array_append+=("$2")
 }
 
-::array_remove() {
-    ::array_contains ${1:?} "${2:?}" || return 1
+c.array_remove() {
+    c.array_contains ${1:?} "${2:?}" || return 1
     local x="$2"
     local -n __cdenv_array_remove=$1
     local i
@@ -80,54 +80,54 @@
     return 1
 }
 
-::set_prepend() {
-    ::array_contains ${1:?} "${2:?}" && return 1
-    ::array_prepend $1 "$2"
+c.set_prepend() {
+    c.array_contains ${1:?} "${2:?}" && return 1
+    c.array_prepend $1 "$2"
 }
 
-::set_append() {
-    ::array_contains ${1:?} "${2:?}" && return 1
-    ::array_append $1 "$2"
+c.set_append() {
+    c.array_contains ${1:?} "${2:?}" && return 1
+    c.array_append $1 "$2"
 }
 
-::set_remove() {
-    ::array_contains ${1:?} "${2:?}" || return 1
-    ::array_remove $1 "$2"
+c.set_remove() {
+    c.array_contains ${1:?} "${2:?}" || return 1
+    c.array_remove $1 "$2"
 }
 
-::var_contains() {
+c.var_contains() {
     local -n var=${1:?}
     local sep=${2:-:}
     local -a __cdenv_var_contains
     IFS="$sep" read -ra __cdenv_var_contains <<< "$var"
-    ::array_contains __cdenv_var_contains "${2:?}"
+    c.array_contains __cdenv_var_contains "${2:?}"
 }
 
-::var_prepend() {
-    ::var_action ::array_prepend ${1:?} "${2:?}" "$3"
+c.var_prepend() {
+    c.var_action c.array_prepend ${1:?} "${2:?}" "$3"
 }
 
-::var_append() {
-    ::var_action ::array_append ${1:?} "${2:?}" "$3"
+c.var_append() {
+    c.var_action c.array_append ${1:?} "${2:?}" "$3"
 }
 
-::var_remove() {
-    ::var_action ::array_remove ${1:?} "${2:?}" "$3"
+c.var_remove() {
+    c.var_action c.array_remove ${1:?} "${2:?}" "$3"
 }
 
-::setvar_prepend() {
-    ::var_action ::set_prepend ${1:?} "${2:?}" "$3"
+c.setvar_prepend() {
+    c.var_action c.set_prepend ${1:?} "${2:?}" "$3"
 }
 
-::setvar_append() {
-    ::var_action ::set_append ${1:?} "${2:?}" "$3"
+c.setvar_append() {
+    c.var_action c.set_append ${1:?} "${2:?}" "$3"
 }
 
-::setvar_remove() {
-    ::var_action ::set_remove ${1:?} "${2:?}" "$3"
+c.setvar_remove() {
+    c.var_action c.set_remove ${1:?} "${2:?}" "$3"
 }
 
-::var_action() {
+c.var_action() {
     local action=${1:?}
     local -n var=${2:?}
     local x="${3:?}"
