@@ -168,7 +168,6 @@ c.load() {
     # Source the needed cdenv files.
     for directory in "${load[@]}"; do
         c.source "$directory"
-        CDENV_BASE="$directory"
     done
 }
 
@@ -187,6 +186,7 @@ c.source() {
     # Source a single cdenv file and keep track of the changes to the
     # environment.
     c.source_many "$1" "$1/$CDENV_FILE"
+    CDENV_BASE="$1"
 }
 
 c.source_many() {
