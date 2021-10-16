@@ -17,6 +17,7 @@
 
 extern crate regex;
 extern crate clap;
+extern crate glob;
 
 use std::env;
 use clap::{App, Arg, SubCommand};
@@ -36,12 +37,18 @@ fn main() {
                                 .arg(Arg::with_name("file")
                                      .long("--file")
                                      .takes_value(true))
-                                .arg(Arg::with_name("oldpwd")
-                                     .long("--oldpwd")
-                                     .takes_value(true))
+                                .arg(Arg::with_name("path")
+                                     .long("--path")
+                                     .takes_value(true)
+                                     .required(true))
+                                .arg(Arg::with_name("reload")
+                                     .long("--reload"))
                                 .arg(Arg::with_name("pwd")
                                      .takes_value(true)
-                                     .required(true)))
+                                     .required(true))
+                                .arg(Arg::with_name("loaded")
+                                     .takes_value(true)
+                                     .multiple(true)))
                     .subcommand(SubCommand::with_name("compare")
                                 .arg(Arg::with_name("path")
                                      .takes_value(true)
@@ -59,13 +66,18 @@ fn main() {
             _ => false // simply default to false
         };
         let file = matches.value_of("file").unwrap_or(".cdenv.sh");
+        let path = matches.value_of("path").unwrap_or("");
+        let reload = matches.is_present("reload");
         let pwd = matches.value_of("pwd").unwrap();
-
-        if let Some(oldpwd) = matches.value_of("oldpwd") {
-            file::list_delta_paths(global, &oldpwd, &pwd, &file);
+        let loaded: Vec<String>;
+        if matches.is_present("loaded") {
+            loaded = matches.values_of("loaded").unwrap().map(|x| x.to_string()).collect();
         } else {
-            file::list_all_paths(global, &pwd, &file);
+            // XXX okay?
+            loaded = vec![];
         }
+
+        file::list_paths(global, reload, &path, &pwd, &file, &loaded);
 
     } else if let Some(matches) = matches.subcommand_matches("compare") {
         let input = matches.value_of("path").unwrap();

@@ -27,6 +27,7 @@ CDENV_PATH="$(dirname "$CDENV_INSTALL")/libs"
 CDENV_CACHE="$HOME/.cache/cdenv"
 CDENV_BASE=
 declare -a CDENV_CALLBACK=()
+declare -a CDENV_STACK=()
 
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
 
@@ -55,22 +56,6 @@ c.debug() {
     [[ $CDENV_VERBOSE -ge 2 ]] && echo "cdenv: $*" >&2
 }
 
-c.safe_source() {
-    # Source a file in the context of a specific directory.
-    local directory="$1"
-    local path="$2"
-    local oldpwd="$OLDPWD"
-    local savedir="$PWD"
-
-    builtin cd "$directory" || return 1
-    # Check the script for errors before sourcing.
-    if $BASH -n "$path"; then
-        source "$path"
-    fi
-    builtin cd "$savedir" || return 1
-    OLDPWD="$oldpwd"
-}
-
 c.translate() {
     # Translate /home/user/foo to ~/foo.
     local path="$(realpath --relative-base "$HOME" "$1")"
@@ -90,103 +75,73 @@ c.restore_path() {
     echo "$CDENV_CACHE/$$/$(echo "${1:1}" | sed 's@/@%2F@g').sh"
 }
 
+c.safe_source() {
+    # Source a file in the context of a specific directory.
+    local directory="$1"
+    local path="$2"
+    local oldpwd="$OLDPWD"
+    local savedir="$PWD"
+
+    builtin cd "$directory" || return 1
+    # Check the script for errors before sourcing.
+    if $BASH -n "$path"; then
+        source "$path"
+    fi
+    builtin cd "$savedir" || return 1
+    OLDPWD="$oldpwd"
+}
+
 c.load() {
-    # There are three modes of operation:
-    #
-    # init:     All cdenv files from every directory leading up from / to $PWD
-    #           are sourced. If CDENV_GLOBAL -eq 1 the cdenv file from $HOME is
-    #           always sourced first, regardless of whether $HOME is part of
-    #           the directory chain.
-    # update:   When the $PWD has been changed, unsource all cdenv files that
-    #           are no longer part of the directory chain and source all cdenv
-    #           files that have not yet been sourced.
-    # reload:   Unsource all loaded cdenv files from the directory chain and
-    #           re-source them again.
     local directories
     local directory
-    local i
-    local -a load=()
-    local -a unload=()
-    local cmd="$1"
-    local pwd="$PWD"
+    local path
+    local reload
+    [[ $1 = reload ]] && reload=--reload
 
-    case "$cmd" in
-        init)
-            eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --file=$CDENV_FILE "$pwd")"
-            unload=() # There is nothing yet to unload.
-            ;;
-        update)
-            local oldpwd="$2"
-            # The current working directory has not been changed, do nothing.
-            [[ $oldpwd = "$pwd" ]] && return;
-            eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --file=$CDENV_FILE --oldpwd="$oldpwd" "$pwd")"
-            ;;
-        reload)
-            local oldpwd="$pwd"
-            eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --file=$CDENV_FILE "$pwd")"
-            ;;
-        *)
-            return;
-            ;;
-    esac
+    eval "$($CDENV_EXEC list $reload --global=$CDENV_GLOBAL --path="$CDENV_PATH" --file=$CDENV_FILE "$PWD" "${CDENV_STACK[@]}")"
 
     # First undo the changes made to the environment.
-    for directory in "${unload[@]}"; do
-        c.unsource "$directory"
+    for path in "${unload[@]}"; do
+        c.unsource "$path"
     done
 
-    # Handle library files from CDENV_PATH and reloading the settings
-    # file and the bash module.
-    IFS=: read -a directories <<< "$CDENV_PATH"
-    case "$cmd" in
-        reload)
-            # Unsource all files from CDENV_PATH in reverse order.
-            for (( i=${#directories[@]} - 1; i >= 0; i-- )); do
-                c.unsource "${directories[i]}"
-            done
-
-            # Reload the settings file.
-            if [[ -e $HOME/$CDENV_RCFILE ]]; then
-                c.msg "reloading ~/$CDENV_RCFILE"
-                if $BASH -n "$HOME/$CDENV_RCFILE"; then
-                    source "$HOME/$CDENV_RCFILE"
-                fi
+    if [[ -n $reload ]]; then
+        # Reload the settings file.
+        if [[ -e $HOME/$CDENV_RCFILE ]]; then
+            c.msg "reloading ~/$CDENV_RCFILE"
+            if $BASH -n "$HOME/$CDENV_RCFILE"; then
+                source "$HOME/$CDENV_RCFILE"
             fi
-            # Reload this bash module.
-            c.msg "reloading $(c.translate "$CDENV_INSTALL")"
-            source "$CDENV_INSTALL" noinit
-            ;;&
-
-        init|reload)
-            # Source all files from CDENV_PATH.
-            for directory in "${directories[@]}"; do
-                c.source_many "$directory" "$directory"/*.sh
-            done
-            ;;
-    esac
+        fi
+        # Reload this bash module.
+        c.msg "reloading $(c.translate "$CDENV_INSTALL")"
+        source "$CDENV_INSTALL" noinit
+    fi
 
     # Source the needed cdenv files.
-    for directory in "${load[@]}"; do
-        c.source "$directory"
+    for path in "${load[@]}"; do
+        c.source "$path"
     done
 }
 
 c.unsource() {
     # Undo the changes from a single cdenv file.
-    local directory="$1"
-    local path="$(c.restore_path "$directory")"
-    c.msg "unsource $(c.translate "$directory")/"
-    if [[ -e $path ]]; then
-        c.safe_source "$directory" "$path"
-        rm "$path"
+    local path="$1"
+    local directory="$(dirname "$path")"
+    local restore="$(c.restore_path "$directory")"
+    c.msg "unsource $(c.translate "$path")"
+    if [[ -e $restore ]]; then
+        c.safe_source "$directory" "$restore"
+        rm "$restore"
     fi
 }
 
 c.source() {
     # Source a single cdenv file and keep track of the changes to the
     # environment.
-    c.source_many "$1" "$1/$CDENV_FILE"
-    CDENV_BASE="$1"
+    local directory="$(dirname "$1")"
+    c.source_many "$directory" "$1"
+    CDENV_BASE="$directory"
 }
 
 c.source_many() {
@@ -203,10 +158,10 @@ c.source_many() {
     { declare -p; declare -f; alias; } > "$cdenv_tmp"
 
     # Source the cdenv file.
-    c.msg "source $(c.translate "$cdenv_directory")/"
     for cdenv_path; do
-        [[ -e "${cdenv_path}" ]] || { c.msg "ERROR: no such file: ${cdenv_path}"; continue; }
-        c.safe_source "$cdenv_directory" "${cdenv_path}"
+        [[ -e "$cdenv_path" ]] || { c.msg "ERROR: no such file: $cdenv_path"; continue; }
+        c.msg "source $(c.translate "$cdenv_path")"
+        c.safe_source "$cdenv_directory" "$cdenv_path"
     done
     unset cdenv_path
 
@@ -221,13 +176,9 @@ c.source_many() {
 
 cdenv() {
     case "$1" in
-        init)
-            c.load init
-            CDENV_LAST="$PWD"
-            ;;
-
         load)
-            c.load update "${CDENV_LAST:-/}"
+            [[ $PWD = "$CDENV_LAST" ]] && return
+            c.load
             CDENV_LAST="$PWD"
             local cb
             for cb in ${CDENV_CALLBACK[@]}; do
@@ -256,11 +207,11 @@ cdenv() {
 
             # unload
             local path="$(c.restore_path "$base")"
-            [[ -e "$path" ]] && c.unsource "$base"
+            [[ -e "$path" ]] && c.unsource "$base/$CDENV_FILE"
             # edit
             ${EDITOR:-vi} "$base/$CDENV_FILE"
             # reload
-            [[ -e "$base/$CDENV_FILE" ]] && c.source "$base"
+            [[ -e "$base/$CDENV_FILE" ]] && c.source "$base/$CDENV_FILE"
             ;;
 
         version)
@@ -342,6 +293,4 @@ else
 
     c.debug "executable: $CDENV_EXEC"
     c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
-
-    [[ $1 != noinit ]] && cdenv init
 fi

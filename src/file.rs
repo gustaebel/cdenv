@@ -18,42 +18,116 @@
 use std::env;
 use std::path::Path;
 use std::iter::Iterator;
+use glob::glob;
+use std::cmp::Ordering;
 
-// Print shell code with all directories in unload and load.
-pub fn list_all_paths(global: bool, pwd: &str, file: &str) {
-    let (unload, load) = enum_dirs(global, &file, &pwd, &pwd);
-    print_paths(&unload, &load);
-}
 
-// Print shell code which directories to unload and which to load.
-pub fn list_delta_paths(global: bool, oldpwd: &str, pwd: &str, file: &str) {
-    let (mut unload, mut load) = enum_dirs(global, &file, &oldpwd, &pwd);
+pub fn list_paths(global: bool, reload: bool, path: &str, pwd: &str, file: &str, loaded: &Vec<String>) {
+    let (unload, load) = list_dirs(global, reload, &path, &file, &pwd, &loaded);
 
-    // Filter out paths that are both in unload and load.
-    let mut index;
-    for name in load.clone() {
-        if unload.contains(&name) {
-            index = unload.iter().position(|x| x == &name).unwrap();
-            unload.remove(index);
-            index = load.iter().position(|x| x == &name).unwrap();
-            load.remove(index);
-        }
-    }
-    print_paths(&unload, &load);
-}
-
-fn print_paths(unload: &Vec<String>, load: &Vec<String>) {
-    println!("local unload=(");
+    println!("local -a unload=(");
     for name in unload {
         println!("  {:?}", name);
     }
     println!(")");
 
-    println!("local load=(");
+    println!("local -a load=(");
     for name in load {
         println!("  {:?}", name);
     }
     println!(")");
+}
+
+fn list_dirs(global: bool, reload: bool, path: &str, file: &str, pwd: &str, loaded: &Vec<String>) -> (Vec<String>, Vec<String>) {
+    let home = env::var("HOME").unwrap_or(String::from("/"));
+
+    let mut found: Vec<String> = Vec::new();
+
+    let paths:Vec<_> = path.split(':').collect();
+    for path in paths {
+        for entry in glob(format!("{}/*.sh", path).as_str()).unwrap() {
+            if let Ok(path) = entry {
+                let p = path.display().to_string();
+                found.push(p);
+            }
+        }
+    }
+
+    // Make sure there is a slash at the end of each directory.
+    let mut pwd = pwd.trim_end_matches('/').to_string();
+    pwd.push_str("/");
+
+    if global && file_exists(&home, file) {
+        let mut f = home.clone();
+        f.push('/');
+        f.push_str(file);
+        found.push(f);
+    }
+
+    for (i, _) in pwd.match_indices('/').collect::<Vec<_>>() {
+        if (!global || pwd[..i] != home) && file_exists(&pwd[..i], file) {
+            let mut f = pwd[..i].to_string();
+            f.push('/');
+            f.push_str(file);
+            found.push(f);
+        }
+    }
+
+    println!("CDENV_STACK=(");
+    for name in &found {
+        println!("  {:?}", name);
+    }
+    println!(")");
+
+    let mut unload: Vec<String> = Vec::new();
+    let mut load: Vec<String> = Vec::new();
+
+    if reload {
+        // XXX We could just return loaded reversed and found.
+        for name in loaded {
+            unload.insert(0, name.to_string());
+        }
+        for name in &found {
+            load.push(name.to_string());
+        }
+
+    } else {
+        let mut i = 0;
+        let mut j = 0;
+
+        loop {
+            if let Some(a) = found.get(i) {
+                if let Some(b) = loaded.get(j) {
+                    match a.cmp(&b.to_string()) {
+                        Ordering::Less => {
+                            load.push(a.to_string());
+                            i += 1;
+                        },
+                        Ordering::Greater => {
+                            unload.insert(0, b.to_string());
+                            j += 1;
+                        },
+                        Ordering::Equal => {
+                            i += 1;
+                            j += 1;
+                        }
+                    }
+                } else {
+                    load.push(a.to_string());
+                    i += 1
+                }
+            } else {
+                if let Some(b) = loaded.get(j) {
+                    unload.insert(0, b.to_string());
+                    j += 1
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    return (unload, load);
 }
 
 fn file_exists(path: &str, file: &str) -> bool {
@@ -61,38 +135,4 @@ fn file_exists(path: &str, file: &str) -> bool {
     path.push('/');
     path.push_str(file);
     Path::new(&path).exists()
-}
-
-// Take a start and a stop directory and calculate which cdenv.sh files
-// must be "unloaded" and which to load.
-fn enum_dirs(global: bool, file: &str, start: &str, stop: &str) -> (Vec<String>, Vec<String>) {
-    let home = env::var("HOME").unwrap_or(String::from("/"));
-
-    let mut unload: Vec<String> = Vec::new();
-    let mut load: Vec<String> = Vec::new();
-
-    // Make sure there is a slash at the end of each directory.
-    let mut start = start.trim_end_matches('/').to_string();
-    start.push_str("/");
-    let mut stop = stop.trim_end_matches('/').to_string();
-    stop.push_str("/");
-
-    for (i, _) in start.match_indices('/').collect::<Vec<_>>() {
-        if (!global || start[..i] != home) && file_exists(&start[..i], file) {
-            unload.insert(0, start[..i].to_string());
-        }
-    }
-
-    for (i, _) in stop.match_indices('/').collect::<Vec<_>>() {
-        if (!global || stop[..i] != home) && file_exists(&stop[..i], file) {
-            load.push(stop[..i].to_string());
-        }
-    }
-
-    if global && file_exists(&home, file) {
-        unload.push(home.clone());
-        load.insert(0, home);
-    }
-
-    return (unload, load);
 }

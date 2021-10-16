@@ -79,7 +79,6 @@ fn prune_unwanted_names(exclude: &'static [&'static str], set: &mut HashMap<Stri
 // have to add -g explicitly to declare all variables global.
 fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
                      set_func: &mut HashMap<String, String>, set_alias: &mut HashMap<String, String>) {
-    // FIXME check characters for var/func names, a-zA-Z0-9_ might not be enough.
     let re_declare = Regex::new("^declare\\s+-+([iaAfxr]*)\\s+([a-zA-Z_][a-zA-Z0-9_]*)$").unwrap();
     let re_var_start = Regex::new("^declare\\s+-+([ixr]*)\\s+([a-zA-Z_][a-zA-Z0-9_]*)=\"(.*)$").unwrap();
     let re_array_start = Regex::new("^declare\\s+-([aAxr]+)\\s+([a-zA-Z_][a-zA-Z0-9_]*)=\\((.*)$").unwrap();
@@ -208,28 +207,34 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
 // and restore statements to the restore file.
 fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>,
               file: &mut File, suffix: &str, unset: &str) {
+
+    let mut keys: Vec<String> = vec![];
+    for key in set_a.keys() {
+        keys.push(key.to_string());
+    }
     for key in set_b.keys() {
-        if !set_a.contains_key(key) {
+        if !keys.contains(key) {
+            keys.push(key.to_string());
+        }
+    }
+    keys.sort();
+
+    for key in keys {
+        if !set_a.contains_key(&key) {
             println!("c.debug 'add     {}{}'", key, suffix);
             write(file, format!("c.debug 'remove  {}{}'\n", key, suffix));
             write(file, format!("{} {}\n", unset, key));
-        }
-    }
 
-    for key in set_a.keys() {
-        if !set_b.contains_key(key) {
+        } else if !set_b.contains_key(&key) {
             println!("c.debug 'remove  {}{}'", key, suffix);
             write(file, format!("c.debug 'restore {}{}'\n", key, suffix));
-            write(file, set_a.get(key).unwrap().to_string());
-        }
-    }
+            write(file, set_a.get(&key).unwrap().to_string());
 
-    for key in set_b.keys() {
-        if set_a.contains_key(key) && set_a.get(key) != set_b.get(key) {
+        } else if set_a.get(&key) != set_b.get(&key) {
             println!("c.debug 'modify  {}{}'", key, suffix);
             write(file, format!("c.debug 'restore {}{}'\n", key, suffix));
             write(file, format!("{} {}\n", unset, key));
-            write(file, set_a.get(key).unwrap().to_string());
+            write(file, set_a.get(&key).unwrap().to_string());
         }
     }
 }
