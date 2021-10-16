@@ -41,8 +41,14 @@ fn main() {
                                      .long("--path")
                                      .takes_value(true)
                                      .required(true))
+                                .arg(Arg::with_name("tag")
+                                     .long("--tag")
+                                     .takes_value(true)
+                                     .required(true))
                                 .arg(Arg::with_name("reload")
                                      .long("--reload"))
+                                .arg(Arg::with_name("autoreload")
+                                     .long("--autoreload"))
                                 .arg(Arg::with_name("pwd")
                                      .takes_value(true)
                                      .required(true))
@@ -65,9 +71,18 @@ fn main() {
             "1" => true,
             _ => false // simply default to false
         };
-        let file = matches.value_of("file").unwrap_or(".cdenv.sh");
-        let path = matches.value_of("path").unwrap_or("");
+        let file = matches.value_of("file").unwrap();
+        let path = matches.value_of("path").unwrap();
+
+        let tag_str = matches.value_of("tag").unwrap();
+        let tag: u64;
+        match tag_str.parse::<u64>() {
+            Ok(number) => { tag = number; },
+            Err(_) => panic!("invalid number {:?}", tag_str),
+        }
+
         let reload = matches.is_present("reload");
+        let autoreload = matches.is_present("autoreload");
         let pwd = matches.value_of("pwd").unwrap();
         let loaded: Vec<String>;
         if matches.is_present("loaded") {
@@ -77,7 +92,7 @@ fn main() {
             loaded = vec![];
         }
 
-        file::list_paths(global, reload, &path, &pwd, &file, &loaded);
+        file::list_paths(global, reload, autoreload, tag, &path, &pwd, &file, &loaded);
 
     } else if let Some(matches) = matches.subcommand_matches("compare") {
         let input = matches.value_of("path").unwrap();

@@ -28,6 +28,8 @@ CDENV_CACHE="$HOME/.cache/cdenv"
 CDENV_BASE=
 declare -a CDENV_CALLBACK=()
 declare -a CDENV_STACK=()
+CDENV_AUTORELOAD=0
+CDENV_TAG=0
 
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
 
@@ -95,17 +97,26 @@ c:update() {
     local directories
     local directory
     local path
-    local reload
-    [[ $1 = reload ]] && reload=--reload
 
-    eval "$($CDENV_EXEC list $reload --global=$CDENV_GLOBAL --path="$CDENV_PATH" --file=$CDENV_FILE "$PWD" "${CDENV_STACK[@]}")"
+    local -a args=()
+    [[ $1 = reload ]] && args+=(--reload)
+    [[ $CDENV_AUTORELOAD -eq 1 ]] && args+=(--autoreload)
+
+    eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --path="$CDENV_PATH" --file=$CDENV_FILE --tag=$CDENV_TAG ${args[*]} "$PWD" "${CDENV_STACK[@]}")"
+
+    for path in "${removed[@]}"; do
+        c.msg "$(c.translate "$path") was removed"
+    done
+    for path in "${changed[@]}"; do
+        c.msg "$(c.translate "$path") was changed"
+    done
 
     # First undo the changes made to the environment.
     for path in "${unload[@]}"; do
         c:unsource "$path"
     done
 
-    if [[ -n $reload ]]; then
+    if [[ $1 = reload ]]; then
         # Reload the settings file.
         if [[ -e $HOME/$CDENV_RCFILE ]]; then
             c.msg "reloading ~/$CDENV_RCFILE"
@@ -177,7 +188,7 @@ c:source_many() {
 cdenv() {
     case "$1" in
         update)
-            [[ $PWD = "$CDENV_LAST" ]] && return
+            [[ $CDENV_AUTORELOAD -ne 1 && $PWD = "$CDENV_LAST" ]] && return
             c:update
             CDENV_LAST="$PWD"
             local cb
@@ -207,11 +218,11 @@ cdenv() {
 
             # unload
             local path="$(c:restore_path "$base")"
-            [[ -e "$path" ]] && c:unsource "$base/$CDENV_FILE"
+            [[ $CDENV_AUTORELOAD -ne 1 && -e "$path" ]] && c:unsource "$base/$CDENV_FILE"
             # edit
             ${EDITOR:-vi} "$base/$CDENV_FILE"
             # reload
-            [[ -e "$base/$CDENV_FILE" ]] && c:source "$base/$CDENV_FILE"
+            [[ $CDENV_AUTORELOAD -ne 1 && -e "$base/$CDENV_FILE" ]] && c:source "$base/$CDENV_FILE"
             ;;
 
         version)
@@ -287,4 +298,5 @@ else
 
     c.debug "executable: $CDENV_EXEC"
     c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
+    [[ $CDENV_AUTORELOAD -eq 1 ]] && c.debug "autoreload is on"
 fi
