@@ -61,7 +61,7 @@ fi
 
 c.err() {
     # Print an error message to stderr.
-    echo "${CDENV_COLOR_ERROR}ERROR: $*${CDENV_COLOR_RESET}" >&2
+    echo "${CDENV_COLOR_ERR}ERROR: $*${CDENV_COLOR_RESET}" >&2
 }
 
 c.msg() {
