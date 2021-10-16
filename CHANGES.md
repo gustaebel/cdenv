@@ -1,3 +1,8 @@
+### Version 0.5.0 - (2021-10-16)
+
+- Add support for `CDENV_AUTORELOAD`.
+
+
 ### Version 0.4.6 - (2021-10-14)
 
 - Add var and array functions.
