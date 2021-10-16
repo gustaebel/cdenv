@@ -91,7 +91,7 @@ c:safe_source() {
     OLDPWD="$oldpwd"
 }
 
-c:load() {
+c:update() {
     local directories
     local directory
     local path
@@ -176,9 +176,9 @@ c:source_many() {
 
 cdenv() {
     case "$1" in
-        load)
+        update)
             [[ $PWD = "$CDENV_LAST" ]] && return
-            c:load
+            c:update
             CDENV_LAST="$PWD"
             local cb
             for cb in ${CDENV_CALLBACK[@]}; do
@@ -187,7 +187,7 @@ cdenv() {
             ;;
 
         reload)
-            c:load reload
+            c:update reload
             ;;
 
         edit)
@@ -275,21 +275,15 @@ EOF
 if [ -z "$BASH_VERSION" ] || [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
     echo "CDENV ERROR: only bash >= 4 is supported!" >&2
 else
-    __found=0
-    for x in "${PROMPT_COMMAND[@]}"; do
-        [[ $x = "cdenv load" ]] && __found=1
-    done
-
-    if [[ $__found -eq 1 ]]; then
+    if [[ ${PROMPT_COMMAND[*]} =~ "cdenv update" ]]; then
         c.debug "cdenv is already installed"
     else
         # Using +=() should always work regardless of whether PROMPT_COMMAND is
         # unset, a normal variable or an array. The result however will be an
         # array.
         c.debug "add to \$PROMPTCOMMAND"
-        PROMPT_COMMAND+=("cdenv load")
+        PROMPT_COMMAND+=("cdenv update")
     fi
-    unset __found
 
     c.debug "executable: $CDENV_EXEC"
     c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
