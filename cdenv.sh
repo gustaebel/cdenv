@@ -35,10 +35,10 @@ declare -a CDENV_STACK=()
 # trap handler.
 mkdir -p "${CDENV_CACHE:?}/$$"
 
-c.exit() {
+c:exit() {
     rm -r "${CDENV_CACHE:?}/$$"
 }
-trap c.exit EXIT
+trap c:exit EXIT
 
 
 c.err() {
@@ -70,12 +70,12 @@ c.translate() {
     fi
 }
 
-c.restore_path() {
+c:restore_path() {
     # Save restore files in ~/.cache/cdenv/<pid>/<path>.sh.
     echo "$CDENV_CACHE/$$/$(echo "${1:1}" | sed 's@/@%2F@g').sh"
 }
 
-c.safe_source() {
+c:safe_source() {
     # Source a file in the context of a specific directory.
     local directory="$1"
     local path="$2"
@@ -91,7 +91,7 @@ c.safe_source() {
     OLDPWD="$oldpwd"
 }
 
-c.load() {
+c:load() {
     local directories
     local directory
     local path
@@ -102,7 +102,7 @@ c.load() {
 
     # First undo the changes made to the environment.
     for path in "${unload[@]}"; do
-        c.unsource "$path"
+        c:unsource "$path"
     done
 
     if [[ -n $reload ]]; then
@@ -120,37 +120,37 @@ c.load() {
 
     # Source the needed cdenv files.
     for path in "${load[@]}"; do
-        c.source "$path"
+        c:source "$path"
     done
 }
 
-c.unsource() {
+c:unsource() {
     # Undo the changes from a single cdenv file.
     local path="$1"
     local directory="$(dirname "$path")"
-    local restore="$(c.restore_path "$directory")"
+    local restore="$(c:restore_path "$directory")"
     c.msg "unsource $(c.translate "$path")"
     if [[ -e $restore ]]; then
-        c.safe_source "$directory" "$restore"
+        c:safe_source "$directory" "$restore"
         rm "$restore"
     fi
 }
 
-c.source() {
+c:source() {
     # Source a single cdenv file and keep track of the changes to the
     # environment.
     local directory="$(dirname "$1")"
-    c.source_many "$directory" "$1"
+    c:source_many "$directory" "$1"
     CDENV_BASE="$directory"
 }
 
-c.source_many() {
+c:source_many() {
     # Source multiple cdenv files from the same directory and keep track of the
     # changes to the environment. Try to avoid collisions with names from the
     # sources.
     local cdenv_directory="$1"
     local cdenv_path
-    local cdenv_restore="$(c.restore_path "$cdenv_directory")"
+    local cdenv_restore="$(c:restore_path "$cdenv_directory")"
     shift
 
     # Save a snapshot of the environment.
@@ -161,7 +161,7 @@ c.source_many() {
     for cdenv_path; do
         [[ -e "$cdenv_path" ]] || { c.msg "ERROR: no such file: $cdenv_path"; continue; }
         c.msg "source $(c.translate "$cdenv_path")"
-        c.safe_source "$cdenv_directory" "$cdenv_path"
+        c:safe_source "$cdenv_directory" "$cdenv_path"
     done
     unset cdenv_path
 
@@ -178,7 +178,7 @@ cdenv() {
     case "$1" in
         load)
             [[ $PWD = "$CDENV_LAST" ]] && return
-            c.load
+            c:load
             CDENV_LAST="$PWD"
             local cb
             for cb in ${CDENV_CALLBACK[@]}; do
@@ -187,7 +187,7 @@ cdenv() {
             ;;
 
         reload)
-            c.load reload
+            c:load reload
             ;;
 
         edit)
@@ -206,12 +206,12 @@ cdenv() {
             esac
 
             # unload
-            local path="$(c.restore_path "$base")"
-            [[ -e "$path" ]] && c.unsource "$base/$CDENV_FILE"
+            local path="$(c:restore_path "$base")"
+            [[ -e "$path" ]] && c:unsource "$base/$CDENV_FILE"
             # edit
             ${EDITOR:-vi} "$base/$CDENV_FILE"
             # reload
-            [[ -e "$base/$CDENV_FILE" ]] && c.source "$base/$CDENV_FILE"
+            [[ -e "$base/$CDENV_FILE" ]] && c:source "$base/$CDENV_FILE"
             ;;
 
         version)
