@@ -17,10 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+CDENV_RCFILE=.cdenvrc.sh
+
+# Defaults.
 CDENV_VERBOSE=0
 CDENV_GLOBAL=1
 CDENV_FILE=.cdenv.sh
-CDENV_RCFILE=.cdenvrc.sh
 CDENV_INSTALL="${BASH_SOURCE[0]}"
 CDENV_EXEC="$(dirname "$CDENV_INSTALL")/cdenv"
 CDENV_PATH="$(dirname "$CDENV_INSTALL")/libs"
@@ -31,6 +33,13 @@ declare -a CDENV_STACK=()
 CDENV_AUTORELOAD=0
 CDENV_TAG=0
 
+CDENV_COLOR=1
+CDENV_COLOR_ERR=$'\e[31m'
+CDENV_COLOR_MSG=$'\e[34m'
+CDENV_COLOR_DEBUG=$'\e[90m'
+CDENV_COLOR_RESET=$'\e[0m'
+
+# Load the settings file selectively replacing the defaults from above.
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
 
 # Create a directory for the restore files which will be removed in the EXIT
@@ -42,20 +51,27 @@ c:exit() {
 }
 trap c:exit EXIT
 
+# Switch off all colors if requested.
+if [[ $CDENV_COLOR -ne 1 ]]; then
+    unset CDENV_COLOR_ERR
+    unset CDENV_COLOR_MSG
+    unset CDENV_COLOR_DEBUG
+    unset CDENV_COLOR_RESET
+fi
 
 c.err() {
     # Print an error message to stderr.
-    echo "ERROR: $*" >&2
+    echo "${CDENV_COLOR_ERROR}ERROR: $*${CDENV_COLOR_RESET}" >&2
 }
 
 c.msg() {
     # Print a message to stderr.
-    [[ $CDENV_VERBOSE -ge 1 ]] && echo "$*" >&2
+    [[ $CDENV_VERBOSE -ge 1 ]] && echo "${CDENV_COLOR_MSG}$*${CDENV_COLOR_RESET}" >&2
 }
 
 c.debug() {
     # Print a debug message to stderr.
-    [[ $CDENV_VERBOSE -ge 2 ]] && echo "cdenv: $*" >&2
+    [[ $CDENV_VERBOSE -ge 2 ]] && echo "${CDENV_COLOR_DEBUG}cdenv: $*${CDENV_COLOR_RESET}" >&2
 }
 
 c.translate() {
@@ -170,7 +186,7 @@ c:source_many() {
 
     # Source the cdenv file.
     for __path; do
-        [[ -e "$__path" ]] || { c.msg "ERROR: no such file: $__path"; continue; }
+        [[ -e "$__path" ]] || { c.err "no such file: $__path"; continue; }
         c.msg "source $(c.translate "$__path")"
         c:safe_source "$__directory" "$__path"
     done
@@ -259,7 +275,7 @@ CDENV_AUTORELOAD={0|1}
     automatically reloaded if they are changed, loaded if they are added and
     unloaded if they are removed. If set to 0, you have to use 'cdenv edit' or
     'cdenv reload' if you want changes to your shell scripts appear in your
-    current shell environment. The default is 0.
+    current shell environment. Default is 0.
 
 CDENV_FILE={basename}
     (current: $CDENV_FILE)
@@ -272,6 +288,11 @@ CDENV_PATH={directory}[:{directory}]
     A colon-separated list of directories (similar to PATH) with shell scripts
     to load on startup. The files must end with '.sh' and are loaded in
     alphabetical order.
+
+CDENV_COLOR={0|1}
+    (current: $CDENV_COLOR)
+    If set to 1, use colored output for error messages and debug messages
+    (if CDENV_VERBOSE > 0), default is 1.
 
 
 commands:

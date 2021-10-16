@@ -115,6 +115,10 @@ Some of *cdenv*'s settings can be customized with a file called `~/.cdenvrc.sh`.
     scripts to load on startup. The files must end with `.sh` and are loaded in
     alphabetical order.
 
+* `CDENV_COLOR={0|1}`
+    If set to `1`, use colored output for error messages and debug messages
+    (if `CDENV_VERBOSE > 0`), default is `1`.
+
 
 ## Prerequisites
 
