@@ -33,6 +33,12 @@ enum LineState {
     InFunctionDef
 }
 
+enum NameType {
+    Variable,
+    Function,
+    Alias
+}
+
 // Parse and compare two sets of shell environments.
 pub fn compare_environments(input: &str, restore: &str) {
     let mut vars_a: HashMap<String, String> = HashMap::new();
@@ -56,9 +62,9 @@ pub fn compare_environments(input: &str, restore: &str) {
 
     // Compare the vars, funcs and alias sets and write statements to stdout
     // and the restore file.
-    compare_sets(&vars_a, &vars_b, &mut file, "", "unset");
-    compare_sets(&funcs_a, &funcs_b, &mut file, "()", "unset -f");
-    compare_sets(&alias_a, &alias_b, &mut file, "*", "unalias");
+    compare_sets(&vars_a, &vars_b, &mut file, NameType::Variable);
+    compare_sets(&funcs_a, &funcs_b, &mut file, NameType::Function);
+    compare_sets(&alias_a, &alias_b, &mut file, NameType::Alias);
 
 }
 
@@ -206,8 +212,26 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
 // Compare the two sets set_a and set_b and write debug statements to stdout
 // and restore statements to the restore file.
 fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>,
-              file: &mut File, suffix: &str, unset: &str) {
+              file: &mut File, name_type: NameType) {
 
+    let suffix;
+    let unset;
+    match name_type {
+        NameType::Variable => {
+            suffix = "";
+            unset = "unset";
+        },
+        NameType::Function => {
+            suffix = "()";
+            unset = "unset -f";
+        },
+        NameType::Alias => {
+            suffix = "*";
+            unset = "unalias";
+        }
+    }
+
+    // Create a sorted list of all keys. There may be more idiomatic ways to do this.
     let mut keys: Vec<String> = vec![];
     for key in set_a.keys() {
         keys.push(key.to_string());
