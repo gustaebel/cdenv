@@ -253,6 +253,14 @@ CDENV_GLOBAL={0|1}
     whether the current working directory is located inside the home directory,
     default is 1.
 
+CDENV_AUTORELOAD={0|1}
+    (current: $CDENV_AUTORELOAD)
+    If set to 1, shell scripts from CDENV_PATH and .cdenv.sh files are
+    automatically reloaded if they are changed, loaded if they are added and
+    unloaded if they are removed. If set to 0, you have to use 'cdenv edit' or
+    'cdenv reload' if you want changes to your shell scripts appear in your
+    current shell environment. The default is 0.
+
 CDENV_FILE={basename}
     (current: $CDENV_FILE)
     Use a script filename different from the default .cdenv.sh to prevent
