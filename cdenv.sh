@@ -74,7 +74,7 @@ c.translate() {
 
 c:restore_path() {
     # Save restore files in ~/.cache/cdenv/<pid>/<path>.sh.
-    echo "$CDENV_CACHE/$$/$(echo "${1:1}" | sed 's@/@%2F@g').sh"
+    echo "$CDENV_CACHE/$$/${1//\//%2F}.sh"
 }
 
 c:safe_source() {
@@ -93,15 +93,15 @@ c:safe_source() {
     OLDPWD="$oldpwd"
 }
 
+# shellcheck disable=SC2154
 c:update() {
-    local directories
-    local directory
     local path
 
     local -a args=()
     [[ $1 = reload ]] && args+=(--reload)
     [[ $CDENV_AUTORELOAD -eq 1 ]] && args+=(--autoreload)
 
+    # shellcheck disable=SC2086
     eval "$($CDENV_EXEC list --global=$CDENV_GLOBAL --path="$CDENV_PATH" --file=$CDENV_FILE --tag=$CDENV_TAG ${args[*]} "$PWD" "${CDENV_STACK[@]}")"
 
     for path in "${removed[@]}"; do
@@ -182,7 +182,7 @@ c:source_many() {
     eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$cdenv_tmp" "$cdenv_restore")"
     rm "$cdenv_tmp"
 
-    echo CDENV_BASE=\"$CDENV_BASE\" >> "$cdenv_restore"
+    echo "CDENV_BASE=\"$CDENV_BASE\"" >> "$cdenv_restore"
 }
 
 cdenv() {
@@ -192,7 +192,7 @@ cdenv() {
             c:update
             CDENV_LAST="$PWD"
             local cb
-            for cb in ${CDENV_CALLBACK[@]}; do
+            for cb in "${CDENV_CALLBACK[@]}"; do
                 $cb
             done
             ;;
