@@ -1,3 +1,8 @@
+### Version 0.5.1 - (2021-10-16)
+
+- Add support for `CDENV_COLOR`.
+
+
 ### Version 0.5.0 - (2021-10-16)
 
 - Add support for `CDENV_AUTORELOAD`.
