@@ -34,10 +34,10 @@ CDENV_AUTORELOAD=0
 CDENV_TAG=0
 
 CDENV_COLOR=1
-CDENV_COLOR_ERR=$'\e[31m'
-CDENV_COLOR_MSG=$'\e[34m'
-CDENV_COLOR_DEBUG=$'\e[90m'
-CDENV_COLOR_RESET=$'\e[0m'
+CDENV_COLOR_ERR=$(tput setaf 1)
+CDENV_COLOR_MSG=$(tput setaf 4)
+CDENV_COLOR_DEBUG=$(tput setaf 7)
+CDENV_COLOR_RESET=$(tput setaf sgr0)
 
 # Load the settings file selectively replacing the defaults from above.
 [[ -e $HOME/$CDENV_RCFILE ]] && source "$HOME/$CDENV_RCFILE"
