@@ -335,11 +335,10 @@ c:install() {
             c.msg "Building cdenv ..."
             cargo build --release
             cp target/release/cdenv .
-            cd "$oldpwd"
             ;;&
         update)
             c.msg "Now type 'cdenv reload'"
-            ;;
+            ;;&
         install|"")
             if ! grep -q "^source \"$PWD/cdenv.sh\"$" $HOME/.bashrc; then
                 c.msg "Installing cdenv.sh in ~/.bashrc"
@@ -347,6 +346,9 @@ c:install() {
             fi
 
             c.msg "Now source \"$(c.translate "$PWD/cdenv.sh")\" or open a new shell"
+            ;;&
+        install|update|"")
+            cd "$oldpwd"
             ;;
         *)
             c.err "invalid command '$1'"
