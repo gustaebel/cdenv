@@ -1,3 +1,9 @@
+### Version 0.5.3 - (2021-10-17)
+
+- Minor fixes.
+- Remove misc/PKGBUILD.
+
+
 ### Version 0.5.2 - (2021-10-17)
 
 - Enable cdenv.sh to install and update cdenv.
