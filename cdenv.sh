@@ -341,7 +341,7 @@ c:install() {
             c.msg "Now type 'cdenv reload'"
             ;;
         install|"")
-            if ! grep -qE '^source ".+cdenv.sh"$' $HOME/.bashrc; then
+            if ! grep -q "^source \"$PWD/cdenv.sh\"$" $HOME/.bashrc; then
                 c.msg "Installing cdenv.sh in ~/.bashrc"
                 echo -e "\nsource \"$PWD/cdenv.sh\"" >> $HOME/.bashrc
             fi
