@@ -1,0 +1,28 @@
+# Maintainer: Lars Gustäbel <lars@gustaebel.de>
+
+pkgname=cdenv
+pkgver=0.5.1
+pkgrel=1
+pkgdesc='Manage different bash environments for different directories'
+url='https://github.com/gustaebel/cdenv/'
+arch=('x86_64')
+license=('GPL')
+depends=('bash')
+makedepends=('git' 'rust')
+source=(https://github.com/gustaebel/${pkgname}/archive/refs/tags/v${pkgver}.tar.gz)
+sha256sums=('SKIP') # :-(
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    cargo build --release
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    mkdir -p ${pkgdir}/usr/lib/cdenv
+    install -m755 target/release/cdenv ${pkgdir}/usr/lib/cdenv
+    install cdenv.sh ${pkgdir}/usr/lib/cdenv
+    cp -r libs ${pkgdir}/usr/lib/cdenv
+    mkdir -p ${pkgdir}/etc/profile.d
+    echo CDENV_PATH=/usr/lib/cdenv/libs:/etc/cdenv > ${pkgdir}/etc/profile.d/cdenv.sh
+}

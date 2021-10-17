@@ -143,12 +143,7 @@ To update this installation:
 $ bash ~/.cdenv/cdenv.sh update
 ```
 
-System-wide installation (in case your bash was built with `-DSYS_BASHRC="/etc/bash.bashrc"`):
+For system-wide installation use the Arch Linux
+[PKGBUILD](https://github.com/gustaebel/cdenv/blob/main/misc/PKGBUILD) as
+reference.
 
-```console
-$ git clone https://github.com/gustaebel/cdenv.git
-$ cd cdenv
-$ make
-$ sudo make install
-$ sudo bash -c 'echo source /usr/lib/cdenv/cdenv.sh >> /etc/bash.bashrc'
-```
