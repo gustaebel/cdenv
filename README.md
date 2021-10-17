@@ -133,8 +133,7 @@ Installation for the current user only:
 
 ```console
 $ git clone https://github.com/gustaebel/cdenv.git ~/.cdenv
-$ cd ~/.cdenv
-$ bash cdenv.sh
+$ bash ~/.cdenv/cdenv.sh
 ```
 
 To update this installation:
