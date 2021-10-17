@@ -123,8 +123,8 @@ Some of *cdenv*'s settings can be customized with a file called `~/.cdenvrc.sh`.
 ## Prerequisites
 
 * bash >= 4.0
+* coreutils
 * rust
-* make
 
 
 ## Installation
@@ -134,7 +134,13 @@ Installation for the current user only:
 ```console
 $ git clone https://github.com/gustaebel/cdenv.git ~/.cdenv
 $ cd ~/.cdenv
-$ make install-user
+$ bash cdenv.sh
+```
+
+To update this installation:
+
+```console
+$ bash ~/.cdenv/cdenv.sh update
 ```
 
 System-wide installation (in case your bash was built with `-DSYS_BASHRC="/etc/bash.bashrc"`):

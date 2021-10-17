@@ -23,9 +23,9 @@ CDENV_RCFILE=.cdenvrc.sh
 CDENV_VERBOSE=0
 CDENV_GLOBAL=1
 CDENV_FILE=.cdenv.sh
-CDENV_INSTALL="${BASH_SOURCE[0]}"
-CDENV_EXEC="$(dirname "$CDENV_INSTALL")/cdenv"
-CDENV_PATH="$(dirname "$CDENV_INSTALL")/libs"
+CDENV_SH="$(realpath "${BASH_SOURCE[0]}")"
+CDENV_EXEC="$(dirname "$CDENV_SH")/cdenv"
+CDENV_PATH="$(dirname "$CDENV_SH")/libs"
 CDENV_CACHE="$HOME/.cache/cdenv"
 CDENV_BASE=
 declare -a CDENV_CALLBACK=()
@@ -36,7 +36,7 @@ CDENV_TAG=0
 CDENV_COLOR=1
 CDENV_COLOR_ERR=$(tput setaf 1)
 CDENV_COLOR_MSG=$(tput setaf 4)
-CDENV_COLOR_DEBUG=$(tput setaf 7)
+CDENV_COLOR_DEBUG=$(tput setaf 8)
 CDENV_COLOR_RESET=$(tput setaf sgr0)
 
 # Load the settings file selectively replacing the defaults from above.
@@ -52,7 +52,7 @@ c:exit() {
 trap c:exit EXIT
 
 # Switch off all colors if requested.
-if [[ $CDENV_COLOR -ne 1 ]]; then
+if [[ ! -t 1 || $CDENV_COLOR -ne 1 ]]; then
     unset CDENV_COLOR_ERR
     unset CDENV_COLOR_MSG
     unset CDENV_COLOR_DEBUG
@@ -141,8 +141,8 @@ c:update() {
             fi
         fi
         # Reload this bash module.
-        c.msg "reloading $(c.translate "$CDENV_INSTALL")"
-        source "$CDENV_INSTALL" noinit
+        c.msg "reloading $(c.translate "$CDENV_SH")"
+        source "$CDENV_SH" init
     fi
 
     # Source the needed cdenv files.
@@ -312,20 +312,72 @@ EOF
     esac
 }
 
-if [ -z "$BASH_VERSION" ] || [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
-    echo "CDENV ERROR: only bash >= 4 is supported!" >&2
-else
-    if [[ ${PROMPT_COMMAND[*]} =~ "cdenv update" ]]; then
-        c.debug "cdenv is already installed"
-    else
-        # Using +=() should always work regardless of whether PROMPT_COMMAND is
-        # unset, a normal variable or an array. The result however will be an
-        # array.
-        c.debug "add to \$PROMPTCOMMAND"
-        PROMPT_COMMAND+=("cdenv update")
+c:install() {
+    if ! command -v git >/dev/null; then
+        c.err "'git' command not found, do you have Git installed?"
+        return 1
+    fi
+    if ! command -v cargo >/dev/null; then
+        c.err "'cargo' command not found, do you have Rust installed?"
+        return 1
     fi
 
-    c.debug "executable: $CDENV_EXEC"
-    c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
-    [[ $CDENV_AUTORELOAD -eq 1 ]] && c.debug "autoreload is on"
+    CDENV_VERBOSE=1
+    local oldpwd="$PWD"
+    cd "$(dirname "$CDENV_SH")"
+
+    case "$1" in
+        update)
+            c.msg "Fetching updates for cdenv ..."
+            git pull
+            ;;&
+        install|update|"")
+            c.msg "Building cdenv ..."
+            cargo build --release
+            cp target/release/cdenv .
+            cd "$oldpwd"
+            ;;&
+        update)
+            c.msg "Now type 'cdenv reload'"
+            ;;
+        install|"")
+            if ! grep -qE '^source ".+cdenv.sh"$' $HOME/.bashrc; then
+                c.msg "Installing cdenv.sh in ~/.bashrc"
+                echo -e "\nsource \"$PWD/cdenv.sh\"" >> $HOME/.bashrc
+            fi
+
+            c.msg "Now source \"$(c.translate "$PWD/cdenv.sh")\" or open a new shell"
+            ;;
+        *)
+            c.err "invalid command '$1'"
+            return 1;
+            ;;
+    esac
+}
+
+if [ -z "$BASH_VERSION" ] || [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
+    echo "CDENV ERROR: only bash >= 4 is supported!" >&2
+
+else
+    if [[ $CDENV_SH != "$(realpath "$0")" || $1 = init ]]; then
+        # cdenv.sh is sourced.
+        if [[ ${PROMPT_COMMAND[*]} =~ "cdenv update" ]]; then
+            c.debug "cdenv is already installed"
+        else
+            # Using +=() should always work regardless of whether PROMPT_COMMAND is
+            # unset, a normal variable or an array. The result however will be an
+            # array.
+            c.debug "add to \$PROMPTCOMMAND"
+            PROMPT_COMMAND+=("cdenv update")
+        fi
+
+        c.debug "executable: $CDENV_EXEC"
+        c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
+        c.debug "autoreload is $(if [[ $CDENV_AUTORELOAD -eq 1 ]]; then echo on; else echo off; fi)"
+    else
+        # cdenv.sh is called.
+        c:install "$@"
+    fi
 fi
+
+unset c:install
