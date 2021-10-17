@@ -361,7 +361,7 @@ if [ -z "$BASH_VERSION" ] || [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
     echo "CDENV ERROR: only bash >= 4 is supported!" >&2
 
 else
-    if [[ $CDENV_SH != "$(realpath "$0")" || $1 = init ]]; then
+    if [[ ${BASH_SOURCE[0]} != "$0" || $1 = init ]]; then
         # cdenv.sh is sourced.
         if [[ ${PROMPT_COMMAND[*]} =~ "cdenv update" ]]; then
             c.debug "cdenv is already installed"
