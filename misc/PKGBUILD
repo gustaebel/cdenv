@@ -1,7 +1,7 @@
 # Maintainer: Lars Gustäbel <lars@gustaebel.de>
 
 pkgname=cdenv
-pkgver=0.5.1
+pkgver=0.5.2
 pkgrel=1
 pkgdesc='Manage different bash environments for different directories'
 url='https://github.com/gustaebel/cdenv/'

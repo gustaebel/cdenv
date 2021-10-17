@@ -1,3 +1,10 @@
+### Version 0.5.2 - (2021-10-17)
+
+- Enable cdenv.sh to install and update cdenv.
+- Use tput instead of hardcoded ansi sequences.
+- Add misc/PKGBUILD.
+
+
 ### Version 0.5.1 - (2021-10-16)
 
 - Add support for `CDENV_COLOR`.
