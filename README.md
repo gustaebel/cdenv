@@ -141,8 +141,3 @@ To update this installation:
 ```console
 $ bash ~/.cdenv/cdenv.sh update
 ```
-
-For system-wide installation use the Arch Linux
-[PKGBUILD](https://github.com/gustaebel/cdenv/blob/main/misc/PKGBUILD) as
-reference.
-
