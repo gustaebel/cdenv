@@ -163,7 +163,7 @@ c:unsource() {
     local stats="$(c:stats_path "$directory")"
     c.msg "unsource $(c.translate "$path")"
     if [[ -e $restore ]]; then
-        c:safe_source "$directory" "$restore"
+        source "$restore"
         rm "$restore" "$stats"
     fi
 }
