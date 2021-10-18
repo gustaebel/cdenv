@@ -174,7 +174,6 @@ c:source() {
     local __directory="$(dirname "$__path")"
     local __restore="$(c:restore_path "$__path")"
     local __stats="$(c:stats_path "$__path")"
-    shift
 
     # Save a snapshot of the environment.
     local __tmp="$CDENV_CACHE/$$.tmp"
@@ -183,7 +182,6 @@ c:source() {
     # Source the cdenv file.
     c.msg "source $(c.translate "$__path")"
     c:safe_source "$__directory" "$__path"
-    unset __path
 
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
@@ -197,7 +195,7 @@ c:find_file() {
     local i
     for ((i = ${#CDENV_STACK[@]}-1; i >= 0; i--)); do
         local f="${CDENV_STACK[$i]}"
-        local s="$(c:restore_path "$f")"
+        local s="$(c:stats_path "$f")"
         if grep -wq "$a" "$s"; then
             echo "$f"
             return
