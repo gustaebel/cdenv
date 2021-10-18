@@ -70,6 +70,9 @@ fn main() {
                                      .required(true))
                                 .arg(Arg::with_name("restore")
                                      .takes_value(true)
+                                     .required(true))
+                                .arg(Arg::with_name("stats")
+                                     .takes_value(true)
                                      .required(true)))
                     .subcommand(SubCommand::with_name("version"))
                     .get_matches();
@@ -97,7 +100,6 @@ fn main() {
         if matches.is_present("loaded") {
             loaded = matches.values_of("loaded").unwrap().map(|x| x.to_string()).collect();
         } else {
-            // XXX okay?
             loaded = vec![];
         }
 
@@ -106,7 +108,8 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("compare") {
         let input = matches.value_of("path").unwrap();
         let restore = matches.value_of("restore").unwrap();
-        environment::compare_environments(input, restore);
+        let stats = matches.value_of("stats").unwrap();
+        environment::compare_environments(input, restore, stats);
 
     } else if matches.is_present("version") {
         println!("{}", VERSION);

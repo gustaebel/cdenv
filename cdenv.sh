@@ -90,7 +90,11 @@ c.translate() {
 
 c:restore_path() {
     # Save restore files in ~/.cache/cdenv/<pid>/<path>.sh.
-    echo "$CDENV_CACHE/$$/${1//\//%2F}.sh"
+    echo "$CDENV_CACHE/$$/${1//\//%2F}"
+}
+
+c:stats_path() {
+    echo "$(c:restore_path "$1").stats"
 }
 
 c:safe_source() {
@@ -156,28 +160,21 @@ c:unsource() {
     local path="$1"
     local directory="$(dirname "$path")"
     local restore="$(c:restore_path "$directory")"
+    local stats="$(c:stats_path "$directory")"
     c.msg "unsource $(c.translate "$path")"
     if [[ -e $restore ]]; then
         c:safe_source "$directory" "$restore"
-        rm "$restore"
+        rm "$restore" "$stats"
     fi
 }
 
 c:source() {
     # Source a single cdenv file and keep track of the changes to the
-    # environment.
-    local directory="$(dirname "$1")"
-    c:source_many "$directory" "$1"
-    CDENV_BASE="$directory"
-}
-
-c:source_many() {
-    # Source multiple cdenv files from the same directory and keep track of the
-    # changes to the environment. Try to avoid collisions with names from the
-    # sources.
-    local __directory="$1"
-    local __path
-    local __restore="$(c:restore_path "$__directory")"
+    # environment. Try to avoid collisions with names from the sources.
+    local __path="$1"
+    local __directory="$(dirname "$__path")"
+    local __restore="$(c:restore_path "$__path")"
+    local __stats="$(c:stats_path "$__path")"
     shift
 
     # Save a snapshot of the environment.
@@ -185,20 +182,31 @@ c:source_many() {
     { declare -p; declare -f; alias; } > "$__tmp"
 
     # Source the cdenv file.
-    for __path; do
-        [[ -e "$__path" ]] || { c.err "no such file: $__path"; continue; }
-        c.msg "source $(c.translate "$__path")"
-        c:safe_source "$__directory" "$__path"
-    done
+    c.msg "source $(c.translate "$__path")"
+    c:safe_source "$__directory" "$__path"
     unset __path
 
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$__tmp" "$__restore")"
+    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$__tmp" "$__restore" "$__stats")"
     rm "$__tmp"
 
     echo "CDENV_BASE=\"$CDENV_BASE\"" >> "$__restore"
+    CDENV_BASE="$__directory"
+}
+
+c:find_file() {
+    local a="$1"
+    local i
+    for ((i = ${#CDENV_STACK[@]}-1; i >= 0; i--)); do
+        local f="${CDENV_STACK[$i]}"
+        local s="$(c:restore_path "$f")"
+        if grep -q "$a" "$s"; then
+            echo "$f"
+            return
+        fi
+    done
 }
 
 cdenv() {
@@ -218,27 +226,29 @@ cdenv() {
             ;;
 
         edit)
-            local base
+            local path
             case "$2" in
                 -b|--base)
-                    base="$CDENV_BASE"
+                    path="$CDENV_BASE/$CDENV_FILE"
                     ;;
                 "")
-                    base="$PWD"
+                    path="$PWD/$CDENV_FILE"
                     ;;
                 *)
-                    c.err "invalid option $2"
-                    return 1
+                    path="$(c:find_file "$2")"
+                    if [[ -z "$path" ]]; then
+                        c.err "no such variable / function / alias: $2"
+                        return 1
+                    fi
                     ;;
             esac
 
             # unload
-            local path="$(c:restore_path "$base")"
-            [[ $CDENV_AUTORELOAD -ne 1 && -e "$path" ]] && c:unsource "$base/$CDENV_FILE"
+            [[ $CDENV_AUTORELOAD -ne 1 && -e "$(c:restore_path "$path")" ]] && c:unsource "$path"
             # edit
-            ${EDITOR:-vi} "$base/$CDENV_FILE"
+            ${EDITOR:-vi} "$path"
             # reload
-            [[ $CDENV_AUTORELOAD -ne 1 && -e "$base/$CDENV_FILE" ]] && c:source "$base/$CDENV_FILE"
+            [[ $CDENV_AUTORELOAD -ne 1 && -e "$path" ]] && c:source "$path"
             ;;
 
         version)
@@ -299,9 +309,12 @@ commands:
     help        This help message.
     reload      Unload and reload the complete cdenv environment and all
                 $CDENV_FILE in the current directory hierarchy.
-    edit [-b]   Load the $CDENV_FILE from the current working directory (or the
-                nearest base if -b/--base is given) in the EDITOR (${EDITOR:-vi})
-                and reload it after that.
+    edit [-b|<name>]
+                Load the $CDENV_FILE from the current working directory in the
+                EDITOR (${EDITOR:-vi}) for editing and reload it after that. If
+                -b/--base is given, the $CDENV_FILE from the nearest base is
+                opened. If a <name> is given, open the script file where this
+                name has most recently been defined.
 EOF
             ;;
 

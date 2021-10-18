@@ -77,8 +77,10 @@ their old values, when you leave the directory.
 
 * `edit`
 
-    Load the .cdenv.sh from the current working directory in the `EDITOR` and
-    reload it after that.
+    Load the `.cdenv.sh` from the current working directory in the `$EDITOR`
+    for editing and reload it after that. If `-b/--base` is given, the
+    `.cdenv.sh` from the nearest base is opened. If a `<name>` is given, open
+    the script file where this name has most recently been defined.
 
 
 ## Settings

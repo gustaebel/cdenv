@@ -39,7 +39,7 @@ enum NameType {
 }
 
 // Parse and compare two sets of shell environments.
-pub fn compare_environments(input: &str, restore: &str) {
+pub fn compare_environments(input: &str, restore: &str, stats: &str) {
     let mut vars_a: HashMap<String, String> = HashMap::new();
     let mut funcs_a: HashMap<String, String> = HashMap::new();
     let mut alias_a: HashMap<String, String> = HashMap::new();
@@ -53,7 +53,8 @@ pub fn compare_environments(input: &str, restore: &str) {
 
     // We open the restore file in append mode, so that e.g. the on_leave()
     // stdlib function can put code in it in advance.
-    let mut file = OpenOptions::new().append(true).create(true).open(restore).unwrap();
+    let mut restore_file = OpenOptions::new().append(true).create(true).open(restore).unwrap();
+    let mut stats_file = OpenOptions::new().append(true).create(true).open(stats).unwrap();
 
     // Remove some names from the environment.
     prune_unwanted_names(EXCLUDE_VARS, &mut vars_a);
@@ -61,9 +62,9 @@ pub fn compare_environments(input: &str, restore: &str) {
 
     // Compare the vars, funcs and alias sets and write statements to stdout
     // and the restore file.
-    compare_sets(&vars_a, &vars_b, &mut file, NameType::Variable);
-    compare_sets(&funcs_a, &funcs_b, &mut file, NameType::Function);
-    compare_sets(&alias_a, &alias_b, &mut file, NameType::Alias);
+    compare_sets(&vars_a, &vars_b, &mut restore_file, &mut stats_file, NameType::Variable);
+    compare_sets(&funcs_a, &funcs_b, &mut restore_file, &mut stats_file, NameType::Function);
+    compare_sets(&alias_a, &alias_b, &mut restore_file, &mut stats_file, NameType::Alias);
 
 }
 
@@ -206,7 +207,7 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
 // Compare the two sets set_a and set_b and write debug statements to stdout
 // and restore statements to the restore file.
 fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>,
-              file: &mut File, name_type: NameType) {
+              restore_file: &mut File, stats_file: &mut File, name_type: NameType) {
 
     let suffix;
     let unset;
@@ -240,19 +241,21 @@ fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>
     for key in keys {
         if !set_a.contains_key(&key) {
             println!("c.debug 'add     {}{}'", key, suffix);
-            write(file, format!("c.debug 'remove  {}{}'\n", key, suffix));
-            write(file, format!("{} {}\n", unset, key));
+            write(restore_file, format!("c.debug 'remove  {}{}'\n", key, suffix));
+            write(restore_file, format!("{} {}\n", unset, key));
+            write(stats_file, format!("{}\n", key));
 
         } else if !set_b.contains_key(&key) {
             println!("c.debug 'remove  {}{}'", key, suffix);
-            write(file, format!("c.debug 'restore {}{}'\n", key, suffix));
-            write(file, set_a.get(&key).unwrap().to_string());
+            write(restore_file, format!("c.debug 'restore {}{}'\n", key, suffix));
+            write(restore_file, set_a.get(&key).unwrap().to_string());
 
         } else if set_a.get(&key) != set_b.get(&key) {
             println!("c.debug 'modify  {}{}'", key, suffix);
-            write(file, format!("c.debug 'restore {}{}'\n", key, suffix));
-            write(file, format!("{} {}\n", unset, key));
-            write(file, set_a.get(&key).unwrap().to_string());
+            write(restore_file, format!("c.debug 'restore {}{}'\n", key, suffix));
+            write(restore_file, format!("{} {}\n", unset, key));
+            write(restore_file, set_a.get(&key).unwrap().to_string());
+            write(stats_file, format!("{}\n", key));
         }
     }
 }
