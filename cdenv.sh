@@ -27,7 +27,6 @@ CDENV_SH="$(realpath "${BASH_SOURCE[0]}")"
 CDENV_EXEC="$(dirname "$CDENV_SH")/cdenv"
 CDENV_PATH="$(dirname "$CDENV_SH")/libs"
 CDENV_CACHE="$HOME/.cache/cdenv"
-CDENV_BASE=
 declare -a CDENV_CALLBACK=()
 declare -a CDENV_STACK=()
 CDENV_AUTORELOAD=0
@@ -191,9 +190,6 @@ c:source() {
     # changing to another directory.
     eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$__tmp" "$__restore" "$__stats")"
     rm "$__tmp"
-
-    echo "CDENV_BASE=\"$CDENV_BASE\"" >> "$__restore"
-    CDENV_BASE="$__directory"
 }
 
 c:find_file() {
@@ -229,7 +225,7 @@ cdenv() {
             local path
             case "$2" in
                 -b|--base)
-                    path="$CDENV_BASE/$CDENV_FILE"
+                    path="${CDENV_STACK[${#CDENV_STACK[@]}-1]}"
                     ;;
                 "")
                     path="$PWD/$CDENV_FILE"
