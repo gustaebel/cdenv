@@ -92,10 +92,6 @@ c:restore_path() {
     echo "$CDENV_CACHE/$$/${1//\//%2F}"
 }
 
-c:stats_path() {
-    echo "$(c:restore_path "$1").stats"
-}
-
 c:safe_source() {
     # Source a file in the context of a specific directory.
     local directory="$1"
@@ -159,11 +155,10 @@ c:unsource() {
     local path="$1"
     local directory="$(dirname "$path")"
     local restore="$(c:restore_path "$directory")"
-    local stats="$(c:stats_path "$directory")"
     c.msg "unsource $(c.translate "$path")"
     if [[ -e $restore ]]; then
         source "$restore"
-        rm "$restore" "$stats"
+        rm "$restore"
     fi
 }
 
@@ -173,7 +168,6 @@ c:source() {
     local __path="$1"
     local __directory="$(dirname "$__path")"
     local __restore="$(c:restore_path "$__path")"
-    local __stats="$(c:stats_path "$__path")"
 
     # Save a snapshot of the environment.
     local __tmp="$CDENV_CACHE/$$.tmp"
@@ -186,17 +180,19 @@ c:source() {
     # Save another snapshot of the environment and compare both. Create a
     # restore file that can be used to undo all changes to the environment when
     # changing to another directory.
-    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$__tmp" "$__restore" "$__stats")"
+    eval "$({ declare -p; declare -f; alias; } | $CDENV_EXEC compare "$__tmp" "$__restore")"
     rm "$__tmp"
 }
 
 c:find_file() {
+    # Go through the stack in reverse looking for a variable, function or alias
+    # definition.
     local a="$1"
     local i
     for ((i = ${#CDENV_STACK[@]}-1; i >= 0; i--)); do
         local f="${CDENV_STACK[$i]}"
-        local s="$(c:stats_path "$f")"
-        if grep -wq "$a" "$s"; then
+        local p="$(c:restore_path "$f")"
+        if grep -q "^# $a\$" "$p"; then
             echo "$f"
             return
         fi
