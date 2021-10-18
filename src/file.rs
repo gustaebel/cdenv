@@ -21,10 +21,11 @@ use std::time::UNIX_EPOCH;
 use std::path::Path;
 use std::iter::Iterator;
 use glob::glob;
+use Context;
 
 
-pub fn list_paths(global: bool, reload: bool, autoreload: bool, tag: u64, path: &str, pwd: &str, file: &str, loaded: &Vec<String>) {
-    let (unload, load) = list_dirs(global, reload, autoreload, tag, &path, &file, &pwd, &loaded);
+pub fn list_paths(context: Context, pwd: &str, loaded: &[String]) {
+    let (unload, load) = list_dirs(context, pwd, loaded);
 
     println!("local -a unload=(");
     for name in unload {
@@ -43,44 +44,42 @@ fn get_mtime(path: &str) -> u64 {
     let metadata = fs::metadata(path).unwrap();
 
     if let Ok(time) = metadata.modified() {
-        return time.duration_since(UNIX_EPOCH).unwrap().as_secs();
+        time.duration_since(UNIX_EPOCH).unwrap().as_secs()
     } else {
-        return 0;
+        0
     }
 }
 
-fn list_dirs(global: bool, reload: bool, autoreload: bool, tag: u64, path: &str, file: &str, pwd: &str, loaded: &Vec<String>) -> (Vec<String>, Vec<String>) {
-    let home = env::var("HOME").unwrap_or(String::from("/"));
+fn list_dirs(context: Context, pwd: &str, loaded: &[String]) -> (Vec<String>, Vec<String>) {
+    let home = env::var("HOME").unwrap_or_else(|_| String::from("/"));
 
     let mut found: Vec<String> = Vec::new();
 
     // Collect files from CDENV_PATH.
-    let paths:Vec<_> = path.split(':').collect();
+    let paths:Vec<_> = context.path.split(':').collect();
     for path in paths {
-        for entry in glob(format!("{}/*.sh", path).as_str()).unwrap() {
-            if let Ok(path) = entry {
-                let p = path.display().to_string();
-                found.push(p);
-            }
+        for path in glob(format!("{}/*.sh", path).as_str()).unwrap().flatten() {
+            let p = path.display().to_string();
+            found.push(p);
         }
     }
 
     // Add ~/.cdenv.sh if global is true.
-    if global && file_exists(&home, file) {
+    if context.global && file_exists(&home, &context.file) {
         let mut f = home.clone();
         f.push('/');
-        f.push_str(file);
+        f.push_str(&context.file);
         found.push(f);
     }
 
     // Collect files the root to the current working directory.
     let mut pwd = pwd.trim_end_matches('/').to_string();
-    pwd.push_str("/");
+    pwd.push('/');
     for (i, _) in pwd.match_indices('/').collect::<Vec<_>>() {
-        if (!global || pwd[..i] != home) && file_exists(&pwd[..i], file) {
+        if (!context.global || pwd[..i] != home) && file_exists(&pwd[..i], &context.file) {
             let mut f = pwd[..i].to_string();
             f.push('/');
-            f.push_str(file);
+            f.push_str(&context.file);
             found.push(f);
         }
     }
@@ -96,7 +95,7 @@ fn list_dirs(global: bool, reload: bool, autoreload: bool, tag: u64, path: &str,
     let mut unload: Vec<String> = Vec::new();
     let mut load: Vec<String> = Vec::new();
 
-    if reload {
+    if context.reload {
         // If a reload is requested we just unload all loaded and load all found filenames.
         // XXX We could just return reversed(loaded) and found directly.
         for name in &found {
@@ -107,7 +106,7 @@ fn list_dirs(global: bool, reload: bool, autoreload: bool, tag: u64, path: &str,
         }
 
     } else {
-        if autoreload {
+        if context.autoreload {
             // Print some helpful debug messages about which files changed.
             println!("removed=(");
             for b in loaded {
@@ -119,7 +118,7 @@ fn list_dirs(global: bool, reload: bool, autoreload: bool, tag: u64, path: &str,
 
             println!("changed=(");
             for a in &found {
-                if tag > 0 && get_mtime(&a) > tag {
+                if context.tag > 0 && get_mtime(a) > context.tag {
                     println!("  {:?}", a);
                 }
             }
@@ -135,9 +134,9 @@ fn list_dirs(global: bool, reload: bool, autoreload: bool, tag: u64, path: &str,
 
         loop {
             if let Some(a) = found.get(i) {
-                if autoreload {
-                    let mtime = get_mtime(&a);
-                    if tag > 0 && mtime > tag {
+                if context.autoreload {
+                    let mtime = get_mtime(a);
+                    if context.tag > 0 && mtime > context.tag {
                         // The file has been changed in the meantime.
                         break;
                     }
@@ -157,36 +156,28 @@ fn list_dirs(global: bool, reload: bool, autoreload: bool, tag: u64, path: &str,
             break;
         }
 
-        loop {
-            if let Some(b) = loaded.get(j) {
-                unload.insert(0, b.to_string());
-                j += 1
-            } else {
-                break;
-            }
+        while let Some(b) = loaded.get(j) {
+            unload.insert(0, b.to_string());
+            j += 1
         }
 
-        loop {
-            if let Some(a) = found.get(i) {
-                load.push(a.to_string());
-                if autoreload {
-                    let mtime = get_mtime(&a);
-                    if mtime > new_tag {
-                        new_tag = mtime;
-                    }
+        while let Some(a) = found.get(i) {
+            load.push(a.to_string());
+            if context.autoreload {
+                let mtime = get_mtime(a);
+                if mtime > new_tag {
+                    new_tag = mtime;
                 }
-                i += 1;
-            } else {
-                break;
             }
+            i += 1;
         }
 
-        if autoreload {
+        if context.autoreload {
             println!("CDENV_TAG={}", new_tag);
         }
     }
 
-    return (unload, load);
+    (unload, load)
 }
 
 fn file_exists(path: &str, file: &str) -> bool {

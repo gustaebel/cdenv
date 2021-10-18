@@ -25,7 +25,16 @@ use clap::{App, Arg, SubCommand};
 mod environment;
 mod file;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub struct Context {
+    global: bool,
+    reload: bool,
+    autoreload: bool,
+    tag: u64,
+    file: String,
+    path: String
+}
 
 fn main() {
     let matches = App::new("cdenv")
@@ -66,23 +75,23 @@ fn main() {
                     .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("list") {
-        let global = match matches.value_of("global").unwrap() {
-            "0" => false,
-            "1" => true,
-            _ => false // simply default to false
-        };
-        let file = matches.value_of("file").unwrap();
-        let path = matches.value_of("path").unwrap();
-
         let tag_str = matches.value_of("tag").unwrap();
-        let tag: u64;
-        match tag_str.parse::<u64>() {
-            Ok(number) => { tag = number; },
-            Err(_) => panic!("invalid number {:?}", tag_str),
-        }
+        let context = Context {
+            global: match matches.value_of("global").unwrap() {
+                "0" => false,
+                "1" => true,
+                _ => false // simply default to false
+            },
+            reload: matches.is_present("reload"),
+            autoreload: matches.is_present("autoreload"),
+            tag: match tag_str.parse() {
+                Ok(number) => { number },
+                Err(_) => panic!("invalid number {:?}", tag_str),
+            },
+            file: matches.value_of("file").unwrap().to_string(),
+            path: matches.value_of("path").unwrap().to_string(),
+        };
 
-        let reload = matches.is_present("reload");
-        let autoreload = matches.is_present("autoreload");
         let pwd = matches.value_of("pwd").unwrap();
         let loaded: Vec<String>;
         if matches.is_present("loaded") {
@@ -92,12 +101,12 @@ fn main() {
             loaded = vec![];
         }
 
-        file::list_paths(global, reload, autoreload, tag, &path, &pwd, &file, &loaded);
+        file::list_paths(context, pwd, &loaded);
 
     } else if let Some(matches) = matches.subcommand_matches("compare") {
         let input = matches.value_of("path").unwrap();
         let restore = matches.value_of("restore").unwrap();
-        environment::compare_environments(&input, &restore);
+        environment::compare_environments(input, restore);
 
     } else if matches.is_present("version") {
         println!("{}", VERSION);

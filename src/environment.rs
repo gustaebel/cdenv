@@ -17,14 +17,13 @@
 
 use std::io::{self, BufRead, BufReader};
 use std::collections::HashMap;
-use std::iter::Iterator;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 
 use regex::{Regex,Captures};
 
-const EXCLUDE_VARS: &'static [&'static str] = &["_", "OLDPWD"];
+const EXCLUDE_VARS: &[&str] = &["_", "OLDPWD"];
 
 enum LineState {
     Default,
@@ -101,110 +100,105 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
         Some(filename) => Box::new(BufReader::new(File::open(filename).unwrap()))
     };
 
-    let mut lines = reader.lines();
+    let lines = reader.lines();
 
     fn get_group(groups: &Captures, group: usize) -> String {
         groups.get(group).unwrap().as_str().to_string()
     }
 
-    loop {
-        if let Some(line) = lines.next() {
-            let mut line = line.unwrap().trim_end().to_string();
+    for line in lines {
+        let mut line = line.unwrap().trim_end().to_string();
 
-            if let Some(groups) = re_declare.captures(&line) {
-                let opts = get_group(&groups, 1);
-                name = get_group(&groups, 2);
-                set_var.insert(name.clone(), format!("declare -g{} {}\n", opts, name));
+        if let Some(groups) = re_declare.captures(&line) {
+            let opts = get_group(&groups, 1);
+            name = get_group(&groups, 2);
+            set_var.insert(name.clone(), format!("declare -g{} {}\n", opts, name));
 
-            } else if let Some(groups) = re_var_start.captures(&line) {
-                let opts = get_group(&groups, 1);
-                name = get_group(&groups, 2);
-                let value = get_group(&groups, 3);
-                line = format!("declare -g{} {}=\"{}\n", opts, name, value);
-                if value.ends_with("\"") && !value.ends_with("\\\"") {
-                    set_var.insert(name.clone(), line);
-                    line_state = LineState::Default;
-                } else {
-                    body.push_str(&line);
-                    line_state = LineState::InVariableDef;
-                }
-
-            } else if let Some(groups) = re_array_start.captures(&line) {
-                let opts = get_group(&groups, 1);
-                name = get_group(&groups, 2);
-                let value = get_group(&groups, 3);
-                line = format!("declare -g{} {}=({}\n", opts, name, value);
-                if value.ends_with(")") && !value.ends_with("\\)") {
-                    set_var.insert(name.clone(), line);
-                    line_state = LineState::Default;
-                } else {
-                    body.push_str(&line);
-                    line_state = LineState::InArrayDef;
-                }
-
-            } else if let Some(groups) = re_function_start.captures(&line) {
-                // Parse the first line of a function definition.
-                name = get_group(&groups, 1);
-                body.push_str(&line);
-                body.push_str("\n");
-                line_state = LineState::InFunctionDef;
-
-            } else if let Some(groups) = re_alias.captures(&line) {
-                name = get_group(&groups, 1);
-                body = get_group(&groups, 2);
-                set_alias.insert(name.clone(), format!("alias {}='{}'\n", name, body));
-
-            } else if re_function_end.is_match(&line) {
-                // Parse the terminating line of a function definition.
-                body.push_str(&line);
-                body.push_str("\n");
-                set_func.insert(name.clone(), body.clone());
-                body.clear();
+        } else if let Some(groups) = re_var_start.captures(&line) {
+            let opts = get_group(&groups, 1);
+            name = get_group(&groups, 2);
+            let value = get_group(&groups, 3);
+            line = format!("declare -g{} {}=\"{}\n", opts, name, value);
+            if value.ends_with('"') && !value.ends_with("\\\"") {
+                set_var.insert(name.clone(), line);
                 line_state = LineState::Default;
-
             } else {
-                match line_state {
-                    LineState::InVariableDef => {
-                        // Collect the lines of a multiline variable.
-                        body.push_str(&line);
-                        body.push_str("\n");
-                        if line.ends_with("\"") && !line.ends_with("\\\"") {
-                            set_var.insert(name.clone(), body.clone());
-                            body.clear();
-                            line_state = LineState::Default;
-                        }
-                    },
-                    LineState::InArrayDef => {
-                        // Collect the lines of a multiline variable.
-                        body.push_str(&line);
-                        body.push_str("\n");
-                        if line.ends_with(")") && !line.ends_with("\\)") {
-                            set_var.insert(name.clone(), body.clone());
-                            body.clear();
-                            line_state = LineState::Default;
-                        }
-                    },
-                    LineState::InFunctionDef => {
-                        // Collect the lines in the function body.
-                        body.push_str(&line);
-                        body.push_str("\n");
-                    },
-                    LineState::Default => {
-                        let mut line = line.trim_end().to_string();
-                        // Escape backslashes.
-                        line = line.replace("\\", "\\\\");
-                        // You can't use a single quote in a single-quoted string even if it is
-                        // escaped with a backslash. The work-around is to close the single-quoted
-                        // string, add a single-quote and open it again: 'foo'\''bar' or
-                        // 'foo'"'"'bar'.
-                        line = line.replace("'", "'\\''");
-                        println!("c.debug 'unable to parse: {}'", line);
-                    }
-                }
+                body.push_str(&line);
+                line_state = LineState::InVariableDef;
             }
 
+        } else if let Some(groups) = re_array_start.captures(&line) {
+            let opts = get_group(&groups, 1);
+            name = get_group(&groups, 2);
+            let value = get_group(&groups, 3);
+            line = format!("declare -g{} {}=({}\n", opts, name, value);
+            if value.ends_with(')') && !value.ends_with("\\)") {
+                set_var.insert(name.clone(), line);
+                line_state = LineState::Default;
+            } else {
+                body.push_str(&line);
+                line_state = LineState::InArrayDef;
+            }
+
+        } else if let Some(groups) = re_function_start.captures(&line) {
+            // Parse the first line of a function definition.
+            name = get_group(&groups, 1);
+            body.push_str(&line);
+            body.push('\n');
+            line_state = LineState::InFunctionDef;
+
+        } else if let Some(groups) = re_alias.captures(&line) {
+            name = get_group(&groups, 1);
+            body = get_group(&groups, 2);
+            set_alias.insert(name.clone(), format!("alias {}='{}'\n", name, body));
+
+        } else if re_function_end.is_match(&line) {
+            // Parse the terminating line of a function definition.
+            body.push_str(&line);
+            body.push('\n');
+            set_func.insert(name.clone(), body.clone());
+            body.clear();
+            line_state = LineState::Default;
+
         } else {
-            break;
+            match line_state {
+                LineState::InVariableDef => {
+                    // Collect the lines of a multiline variable.
+                    body.push_str(&line);
+                    body.push('\n');
+                    if line.ends_with('"') && !line.ends_with("\\\"") {
+                        set_var.insert(name.clone(), body.clone());
+                        body.clear();
+                        line_state = LineState::Default;
+                    }
+                },
+                LineState::InArrayDef => {
+                    // Collect the lines of a multiline variable.
+                    body.push_str(&line);
+                    body.push('\n');
+                    if line.ends_with(')') && !line.ends_with("\\)") {
+                        set_var.insert(name.clone(), body.clone());
+                        body.clear();
+                        line_state = LineState::Default;
+                    }
+                },
+                LineState::InFunctionDef => {
+                    // Collect the lines in the function body.
+                    body.push_str(&line);
+                    body.push('\n');
+                },
+                LineState::Default => {
+                    let mut line = line.trim_end().to_string();
+                    // Escape backslashes.
+                    line = line.replace("\\", "\\\\");
+                    // You can't use a single quote in a single-quoted string even if it is
+                    // escaped with a backslash. The work-around is to close the single-quoted
+                    // string, add a single-quote and open it again: 'foo'\''bar' or
+                    // 'foo'"'"'bar'.
+                    line = line.replace("'", "'\\''");
+                    println!("c.debug 'unable to parse: {}'", line);
+                }
+            }
         }
     }
 }

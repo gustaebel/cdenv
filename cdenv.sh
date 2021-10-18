@@ -324,7 +324,7 @@ c:install() {
 
     CDENV_VERBOSE=1
     local oldpwd="$PWD"
-    cd "$(dirname "$CDENV_SH")"
+    cd "$(dirname "$CDENV_SH")" || true
 
     case "$1" in
         update)
@@ -340,15 +340,15 @@ c:install() {
             c.msg "Now type 'cdenv reload'"
             ;;&
         install|"")
-            if ! grep -q "^source \"$PWD/cdenv.sh\"$" $HOME/.bashrc; then
+            if ! grep -q "^source \"$PWD/cdenv.sh\"$" "$HOME/.bashrc"; then
                 c.msg "Installing cdenv.sh in ~/.bashrc"
-                echo -e "\nsource \"$PWD/cdenv.sh\"" >> $HOME/.bashrc
+                echo -e "\nsource \"$PWD/cdenv.sh\"" >> "$HOME/.bashrc"
             fi
 
             c.msg "Now source \"$(c.translate "$PWD/cdenv.sh")\" or open a new shell"
             ;;&
         install|update|"")
-            cd "$oldpwd"
+            cd "$oldpwd" || true
             ;;
         *)
             c.err "invalid command '$1'"
