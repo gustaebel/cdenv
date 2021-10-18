@@ -198,7 +198,7 @@ c:find_file() {
     for ((i = ${#CDENV_STACK[@]}-1; i >= 0; i--)); do
         local f="${CDENV_STACK[$i]}"
         local s="$(c:restore_path "$f")"
-        if grep -q "$a" "$s"; then
+        if grep -wq "$a" "$s"; then
             echo "$f"
             return
         fi
