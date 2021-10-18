@@ -1,3 +1,10 @@
+### Version 0.5.4 - (2021-10-18)
+
+- Add name argument to 'cdenv edit'.
+- Minor fixes.
+- Reduce the size of the cdenv executable.
+
+
 ### Version 0.5.3 - (2021-10-17)
 
 - Minor fixes.
