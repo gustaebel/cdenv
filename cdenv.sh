@@ -204,11 +204,11 @@ c:line_number() {
     # definition in a file.
     local n="$1"
     local f="$2"
-    local p r
+    local p
 
-    for p in "$n=" \
-             "$n[[:space:]]*([[:space:]]*)" \
-             "alias[[:space:]]\+$n="; do
+    for p in "${n}=" \
+             "${n}[[:space:]]*([[:space:]]*)" \
+             "alias[[:space:]]\+${n}="; do
         awk "/^[^#]/ && /$p/ { print \"+\" NR; ex = 1; exit 0; } \
              END { if (!ex) exit 1; }" \
             "$f" && break
@@ -253,7 +253,7 @@ cdenv() {
             # unload
             [[ $CDENV_AUTORELOAD -ne 1 && -e "$(c:restore_path "$path")" ]] && c:unsource "$path"
             # edit
-            ${EDITOR:-vi} $lineno "$path"
+            ${EDITOR:-vi} "$lineno" "$path"
             # reload
             [[ $CDENV_AUTORELOAD -ne 1 && -e "$path" ]] && c:source "$path"
             ;;
