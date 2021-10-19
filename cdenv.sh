@@ -199,6 +199,22 @@ c:find_file() {
     done
 }
 
+c:line_number() {
+    # Return the line number of a specific variable / function / alias
+    # definition in a file.
+    local n="$1"
+    local f="$2"
+    local p r
+
+    for p in "$n=" \
+             "$n[[:space:]]*([[:space:]]*)" \
+             "alias[[:space:]]\+$n="; do
+        awk "/^[^#]/ && /$p/ { print \"+\" NR; ex = 1; exit 0; } \
+             END { if (!ex) exit 1; }" \
+            "$f" && break
+    done
+}
+
 cdenv() {
     case "$1" in
         update)
@@ -216,7 +232,7 @@ cdenv() {
             ;;
 
         edit)
-            local path
+            local path lineno
             case "$2" in
                 -b|--base)
                     path="${CDENV_STACK[${#CDENV_STACK[@]}-1]}"
@@ -230,13 +246,14 @@ cdenv() {
                         c.err "no such variable / function / alias: $2"
                         return 1
                     fi
+                    lineno="$(c:line_number "$2" "$path")"
                     ;;
             esac
 
             # unload
             [[ $CDENV_AUTORELOAD -ne 1 && -e "$(c:restore_path "$path")" ]] && c:unsource "$path"
             # edit
-            ${EDITOR:-vi} "$path"
+            ${EDITOR:-vi} $lineno "$path"
             # reload
             [[ $CDENV_AUTORELOAD -ne 1 && -e "$path" ]] && c:source "$path"
             ;;
