@@ -1,3 +1,8 @@
+### Version 0.5.5 - (2021-10-19)
+
+- `cdenv edit <name>` now opens the file at the line where *name* is defined.
+
+
 ### Version 0.5.4 - (2021-10-18)
 
 - Add name argument to 'cdenv edit'.
