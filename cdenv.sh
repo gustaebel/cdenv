@@ -253,7 +253,8 @@ cdenv() {
             # unload
             [[ $CDENV_AUTORELOAD -ne 1 && -e "$(c:restore_path "$path")" ]] && c:unsource "$path"
             # edit
-            ${EDITOR:-vi} "$lineno" "$path"
+            # shellcheck disable=SC2086
+            ${EDITOR:-vi} $lineno "$path"
             # reload
             [[ $CDENV_AUTORELOAD -ne 1 && -e "$path" ]] && c:source "$path"
             ;;
