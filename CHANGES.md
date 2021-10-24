@@ -1,3 +1,8 @@
+### Version 0.5.6 - (2021-10-24)
+
+- Add exit callbacks.
+
+
 ### Version 0.5.5 - (2021-10-19)
 
 - `cdenv edit <name>` now opens the file at the line where *name* is defined.
