@@ -47,6 +47,10 @@ mkdir -p "${CDENV_CACHE:?}/$$"
 
 c:exit() {
     rm -r "${CDENV_CACHE:?}/$$"
+    local cb
+    for cb in "${CDENV_EXIT_CALLBACK[@]}"; do
+        $cb
+    done
 }
 trap c:exit EXIT
 

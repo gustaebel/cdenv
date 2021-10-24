@@ -55,3 +55,15 @@ c.callback_add() {
 c.callback_remove() {
     c.set_remove CDENV_CALLBACK ${1:?}
 }
+
+c.exit_callback_add() {
+    if [[ $(type -t ${1:?}) = function ]]; then
+        c.set_append CDENV_EXIT_CALLBACK ${1:?}
+    else
+        c.err "$1 is not defined or is no function"
+    fi
+}
+
+c.exit_callback_remove() {
+    c.set_remove CDENV_EXIT_CALLBACK ${1:?}
+}
