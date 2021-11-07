@@ -145,7 +145,7 @@ c:update() {
         fi
         # Reload this bash module.
         c.msg "reloading $(c.translate "$CDENV_SH")"
-        source "$CDENV_SH"
+        source "$CDENV_SH" ""
     fi
 
     # Source the needed cdenv files.
