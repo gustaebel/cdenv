@@ -1,3 +1,9 @@
+### Version 0.5.7 - (2021-11-07)
+
+- Trace shell options.
+- Fix restoring.
+
+
 ### Version 0.5.6 - (2021-10-24)
 
 - Add exit callbacks.
