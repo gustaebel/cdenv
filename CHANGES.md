@@ -1,3 +1,8 @@
+### Version 0.6.0 - (2021-11-07)
+
+- Change builtin install/update to use a shar archive.
+
+
 ### Version 0.5.7 - (2021-11-07)
 
 - Trace shell options.
