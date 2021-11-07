@@ -23,7 +23,7 @@ use std::io::prelude::*;
 
 use regex::{Regex,Captures};
 
-const EXCLUDE_VARS: &[&str] = &["_", "OLDPWD", "BASHOPTS", "SHELLOPTS"];
+const EXCLUDE_VARS: &[&str] = &["_", "OLDPWD"];
 
 enum LineState {
     Default,
@@ -118,13 +118,18 @@ fn parse_environment(input: Option<&str>, set_var: &mut HashMap<String, String>,
             let opts = get_group(&groups, 1);
             name = get_group(&groups, 2);
             let value = get_group(&groups, 3);
-            line = format!("declare -g{} {}=\"{}\n", opts, name, value);
-            if value.ends_with('"') && !value.ends_with("\\\"") {
-                set_var.insert(name.clone(), line);
+            if name == "BASHOPTS" || name == "SHELLOPTS" {
+                set_var.insert(name.clone(), value[..value.len()-1].to_string());
                 line_state = LineState::Default;
             } else {
-                body.push_str(&line);
-                line_state = LineState::InVariableDef;
+                line = format!("declare -g{} {}=\"{}\n", opts, name, value);
+                if value.ends_with('"') && !value.ends_with("\\\"") {
+                    set_var.insert(name.clone(), line);
+                    line_state = LineState::Default;
+                } else {
+                    body.push_str(&line);
+                    line_state = LineState::InVariableDef;
+                }
             }
 
         } else if let Some(groups) = re_array_start.captures(&line) {
@@ -252,12 +257,33 @@ fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>
             write(restore_file, set_a.get(&key).unwrap().to_string());
 
         } else if set_a.get(&key) != set_b.get(&key) {
-            // The value of a name was modified.
-            println!("c.debug 'modify  {}{}'", key, suffix);
-            write(restore_file, format!("# {}\n", key));
-            write(restore_file, format!("c.debug 'restore {}{}'\n", key, suffix));
-            write(restore_file, format!("{} {}\n", unset, key));
-            write(restore_file, set_a.get(&key).unwrap().to_string());
+            if matches!(name_type, NameType::Variable) && (key == "BASHOPTS" || key == "SHELLOPTS") {
+                let old:Vec<_> = set_a.get(&key).unwrap().split(':').collect();
+                let new:Vec<_> = set_b.get(&key).unwrap().split(':').collect();
+                for key in &old {
+                    if !new.contains(&key) {
+                        println!("c.debug 'set off {}{}'", key, suffix);
+                        write(restore_file, format!("# {}\n", key));
+                        write(restore_file, format!("c.debug 'set on  {}{}'\n", key, suffix));
+                        write(restore_file, format!("shopt -s {} 2>/dev/null || shopt -so {}\n", key, key));
+                    }
+                }
+                for key in &new {
+                    if !old.contains(&key) {
+                        println!("c.debug 'set on  {}{}'", key, suffix);
+                        write(restore_file, format!("# {}\n", key));
+                        write(restore_file, format!("c.debug 'set off {}{}'\n", key, suffix));
+                        write(restore_file, format!("shopt -u {} 2>/dev/null || shopt -uo {}\n", key, key));
+                    }
+                }
+            } else {
+                // The value of a name was modified.
+                println!("c.debug 'modify  {}{}'", key, suffix);
+                write(restore_file, format!("# {}\n", key));
+                write(restore_file, format!("c.debug 'restore {}{}'\n", key, suffix));
+                write(restore_file, format!("{} {}\n", unset, key));
+                write(restore_file, set_a.get(&key).unwrap().to_string());
+            }
         }
     }
 }
