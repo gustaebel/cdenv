@@ -1,6 +1,6 @@
 [package]
 name = "cdenv"
-version = "0.6.0"
+version = "0.6.1"
 
 [dependencies]
 clap = "~2.33.3"

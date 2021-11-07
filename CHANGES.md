@@ -1,3 +1,8 @@
+### Version 0.6.1 - (2021-11-07)
+
+- Correctly source cdenv.sh on update.
+
+
 ### Version 0.6.0 - (2021-11-07)
 
 - Change builtin install/update to use a shar archive.
