@@ -23,7 +23,7 @@ use std::io::prelude::*;
 
 use regex::{Regex,Captures};
 
-const EXCLUDE_VARS: &[&str] = &["_", "OLDPWD"];
+const EXCLUDE_VARS: &[&str] = &["_", "OLDPWD", "BASHOPTS", "SHELLOPTS"];
 
 enum LineState {
     Default,
@@ -239,17 +239,20 @@ fn compare_sets(set_a: &HashMap<String, String>, set_b: &HashMap<String, String>
 
     for key in keys {
         if !set_a.contains_key(&key) {
+            // A name was added.
             println!("c.debug 'add     {}{}'", key, suffix);
             write(restore_file, format!("# {}\n", key));
             write(restore_file, format!("c.debug 'remove  {}{}'\n", key, suffix));
             write(restore_file, format!("{} {}\n", unset, key));
 
         } else if !set_b.contains_key(&key) {
+            // A name was removed.
             println!("c.debug 'remove  {}{}'", key, suffix);
             write(restore_file, format!("c.debug 'restore {}{}'\n", key, suffix));
             write(restore_file, set_a.get(&key).unwrap().to_string());
 
         } else if set_a.get(&key) != set_b.get(&key) {
+            // The value of a name was modified.
             println!("c.debug 'modify  {}{}'", key, suffix);
             write(restore_file, format!("# {}\n", key));
             write(restore_file, format!("c.debug 'restore {}{}'\n", key, suffix));
