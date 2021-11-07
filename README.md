@@ -58,6 +58,7 @@ their old values, when you leave the directory.
     * Environment variables
     * Shell functions
     * Aliases
+    * Shell options
 * Supports oneshot shell code that is executed once when the directory is entered.
 * Uses plain shell code, no imposed quirky constraints.
 * Support for bash >= 4.0 only.
