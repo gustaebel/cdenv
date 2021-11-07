@@ -157,8 +157,7 @@ c:update() {
 c:unsource() {
     # Undo the changes from a single cdenv file.
     local path="$1"
-    local directory="$(dirname "$path")"
-    local restore="$(c:restore_path "$directory")"
+    local restore="$(c:restore_path "$path")"
     c.msg "unsource $(c.translate "$path")"
     if [[ -e $restore ]]; then
         source "$restore"
