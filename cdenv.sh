@@ -145,7 +145,7 @@ c:update() {
         fi
         # Reload this bash module.
         c.msg "reloading $(c.translate "$CDENV_SH")"
-        source "$CDENV_SH" init
+        source "$CDENV_SH"
     fi
 
     # Source the needed cdenv files.
@@ -337,13 +337,16 @@ EOF
 }
 
 c:install() {
-    if ! command -v git >/dev/null; then
-        c.err "'git' command not found, do you have Git installed?"
-        return 1
-    fi
-    if ! command -v cargo >/dev/null; then
-        c.err "'cargo' command not found, do you have Rust installed?"
-        return 1
+    local fetch
+    if ! command -v curl >/dev/null; then
+        if ! command -v wget >/dev/null; then
+            c.err "neither 'curl' nor 'wget' command found!"
+            return 1
+        else
+            fetch="wget -qO -"
+        fi
+    else
+        fetch="curl -sL"
     fi
 
     CDENV_VERBOSE=1
@@ -352,32 +355,27 @@ c:install() {
 
     case "$1" in
         update)
-            c.msg "Fetching updates for cdenv ..."
-            git pull
+            c.msg "Fetching update for cdenv ..."
+            $fetch https://github.com/gustaebel/cdenv/releases/latest/download/cdenv.shar | $BASH
+
+            c.msg "Reloading installation ..."
+            c:update reload
             ;;&
-        install|update|"")
-            c.msg "Building cdenv ..."
-            cargo build --release
-            cp target/release/cdenv .
-            ;;&
-        update)
-            c.msg "Now type 'cdenv reload'"
-            ;;&
+
         install|"")
             if ! grep -q "^source \"$PWD/cdenv.sh\"$" "$HOME/.bashrc"; then
                 c.msg "Installing cdenv.sh in ~/.bashrc"
                 echo -e "\nsource \"$PWD/cdenv.sh\"" >> "$HOME/.bashrc"
             fi
 
-            c.msg "Now source \"$(c.translate "$PWD/cdenv.sh")\" or open a new shell"
+            c.msg "Sourcing \"$(c.translate "$PWD/cdenv.sh")\""
+            source "cdenv.sh" ""
             ;;&
+
         install|update|"")
             cd "$oldpwd" || true
             ;;
-        *)
-            c.err "invalid command '$1'"
-            return 1;
-            ;;
+
     esac
 }
 
@@ -385,24 +383,37 @@ if [ -z "$BASH_VERSION" ] || [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
     echo "CDENV ERROR: only bash >= 4 is supported!" >&2
 
 else
-    if [[ ${BASH_SOURCE[0]} != "$0" || $1 = init ]]; then
-        # cdenv.sh is sourced.
-        if [[ ${PROMPT_COMMAND[*]} =~ "cdenv update" ]]; then
-            c.debug "cdenv is already installed"
-        else
-            # Using +=() should always work regardless of whether PROMPT_COMMAND is
-            # unset, a normal variable or an array. The result however will be an
-            # array.
-            c.debug "add to \$PROMPTCOMMAND"
-            PROMPT_COMMAND+=("cdenv update")
-        fi
+    if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
+        case "$1" in
+            "")
+                if [[ ${PROMPT_COMMAND[*]} =~ "cdenv update" ]]; then
+                    c.debug "cdenv is already installed"
+                else
+                    # Using +=() should always work regardless of whether PROMPT_COMMAND is
+                    # unset, a normal variable or an array. The result however will be an
+                    # array.
+                    c.debug "add to \$PROMPTCOMMAND"
+                    PROMPT_COMMAND+=("cdenv update")
+                fi
 
-        c.debug "executable: $CDENV_EXEC"
-        c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
-        c.debug "autoreload is $(if [[ $CDENV_AUTORELOAD -eq 1 ]]; then echo on; else echo off; fi)"
+                c.debug "executable: $CDENV_EXEC"
+                c.debug "cache directory: $(c.translate "$CDENV_CACHE/$$")"
+                c.debug "autoreload is $(if [[ $CDENV_AUTORELOAD -eq 1 ]]; then echo on; else echo off; fi)"
+                ;;
+            install)
+                c:install install
+                ;;
+            update)
+                c:install update
+                ;;
+            *)
+                c.err "invalid command '$1'"
+                return 1;
+                ;;
+        esac
     else
-        # cdenv.sh is called.
-        c:install "$@"
+        c.err "cdenv.sh is supposed to be sourced!"
+        echo "usage: source cdenv.sh [install|update]"
     fi
 fi
 

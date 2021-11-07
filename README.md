@@ -123,24 +123,53 @@ Some of *cdenv*'s settings can be customized with a file called `~/.cdenvrc.sh`.
     (if `CDENV_VERBOSE > 0`), default is `1`.
 
 
-## Prerequisites
+## Installation from the shar archive
 
-* bash >= 4.0
-* coreutils
-* rust
+### Prerequisites
 
+* curl / wget
 
-## Installation
+### Installation
 
-Installation for the current user only:
+Installation for the current user:
 
 ```console
-$ git clone https://github.com/gustaebel/cdenv.git ~/.cdenv
-$ bash ~/.cdenv/cdenv.sh
+$ mkdir ~/.cdenv
+$ cd ~/.cdenv
+$ curl -sL https://github.com/gustaebel/cdenv/releases/latest/download/cdenv.shar | bash
+$ source cdenv.sh install
 ```
 
 To update this installation:
 
 ```console
 $ bash ~/.cdenv/cdenv.sh update
+```
+
+## Installation from git
+
+### Prerequisites
+
+* bash >= 4.0
+* coreutils
+* make
+* rust
+
+### Installation
+
+Installation for the current user:
+
+```console
+$ git clone https://github.com/gustaebel/cdenv.git ~/.cdenv
+$ cd .cdenv
+$ make
+$ source cdenv.sh install
+```
+
+To update this installation:
+
+```console
+$ git pull
+$ make
+$ cdenv reload
 ```
