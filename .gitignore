@@ -1,3 +1,6 @@
 /Cargo.lock
 /target
+/cdenv
+/cdenv.shar
 /.cdenv.sh
+/libs/03_optional.sh
