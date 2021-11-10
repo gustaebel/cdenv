@@ -221,9 +221,10 @@ c:line_number() {
 cdenv() {
     case "$1" in
         update)
-            [[ $CDENV_AUTORELOAD -ne 1 && $PWD = "$CDENV_LAST" ]] && return
-            c:update
-            CDENV_LAST="$PWD"
+            if [[ $CDENV_AUTORELOAD -eq 1 || $PWD != "$CDENV_LAST" ]]; then
+                c:update
+                CDENV_LAST="$PWD"
+            fi
             local cb
             for cb in "${CDENV_CALLBACK[@]}"; do
                 $cb
